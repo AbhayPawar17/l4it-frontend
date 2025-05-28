@@ -67,7 +67,7 @@ export default function BlogsPage() {
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/blogs/?skip=0&limit=100`, {
+      const response = await fetch(`${API_BASE_URL}/blog`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -112,7 +112,7 @@ export default function BlogsPage() {
         }
       })
 
-      const response = await fetch(`${API_BASE_URL}/blogs/`, {
+      const response = await fetch(`${API_BASE_URL}/blog`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -161,7 +161,7 @@ export default function BlogsPage() {
         }
       })
 
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -206,7 +206,7 @@ export default function BlogsPage() {
     if (!confirm("Are you sure you want to delete this blog post? This action cannot be undone.")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

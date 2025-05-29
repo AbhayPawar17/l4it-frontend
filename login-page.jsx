@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 import { useAuth } from "./contexts/auth-context"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -28,12 +27,14 @@ export default function Component() {
     setMounted(true)
   }, [])
 
+  // Redirect if already authenticated
   useEffect(() => {
     if (mounted && auth && auth.isAuthenticated) {
       router.push("/dashboard")
     }
   }, [mounted, auth, router])
 
+  // Clear error when user starts typing
   useEffect(() => {
     if (error) {
       const timer = setTimeout(() => setError(null), 5000)
@@ -43,7 +44,7 @@ export default function Component() {
 
   const handleInputChange = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-    if (error) setError(null)
+    if (error) setError(null) // Clear error when user types
   }
 
   const validateForm = () => {
@@ -84,6 +85,7 @@ export default function Component() {
       const result = await auth.login(formData.email, formData.password)
 
       if (result.success) {
+        // Login successful, redirect will happen via useEffect
         router.push("/dashboard")
       } else {
         setError(result.error || "Login failed. Please try again.")
@@ -96,65 +98,39 @@ export default function Component() {
     }
   }
 
+  // Show loading while mounting or if already authenticated
   if (!mounted || (auth && auth.loading) || (auth && auth.isAuthenticated)) {
     return (
-      <div className="min-h-screen flex items-center justify-center gradient-bg">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex items-center space-x-2"
-        >
-          <Loader2 className="h-6 w-6 animate-spin text-white" />
-          <span className="text-white">Loading...</span>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center gradient-bg px-4 py-12 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md space-y-8"
-      >
-        <Card className="glass-effect hover-scale">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8">
+        <Card className="shadow-lg">
           <CardHeader className="space-y-1 text-center">
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <CardTitle className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-400 to-purple-600 bg-clip-text text-transparent">
-                Welcome back
-              </CardTitle>
-              <CardDescription className="text-sm text-gray-300">
-                Enter your email and password to sign in to your account
-              </CardDescription>
-            </motion.div>
+            <CardTitle className="text-2xl font-bold tracking-tight">Welcome back</CardTitle>
+            <CardDescription className="text-sm text-muted-foreground">
+              Enter your email and password to sign in to your account
+            </CardDescription>
           </CardHeader>
           <form onSubmit={handleSubmit}>
             <CardContent className="space-y-4">
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                >
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                </motion.div>
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
 
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.3 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="email" className="text-sm font-medium text-gray-300">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium">
                   Email address
                 </Label>
                 <Input
@@ -164,20 +140,15 @@ export default function Component() {
                   autoComplete="email"
                   required
                   placeholder="Enter your email"
-                  className="w-full bg-opacity-20 backdrop-blur-lg text-white placeholder:text-gray-400"
+                  className="w-full"
                   value={formData.email}
                   onChange={(e) => handleInputChange("email", e.target.value)}
                   disabled={isLoading}
                 />
-              </motion.div>
+              </div>
 
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 0.4 }}
-                className="space-y-2"
-              >
-                <Label htmlFor="password" className="text-sm font-medium text-gray-300">
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-sm font-medium">
                   Password
                 </Label>
                 <div className="relative">
@@ -188,7 +159,7 @@ export default function Component() {
                     autoComplete="current-password"
                     required
                     placeholder="Enter your password"
-                    className="w-full pr-10 bg-opacity-20 backdrop-blur-lg text-white placeholder:text-gray-400"
+                    className="w-full pr-10"
                     value={formData.password}
                     onChange={(e) => handleInputChange("password", e.target.value)}
                     disabled={isLoading}
@@ -197,68 +168,50 @@ export default function Component() {
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400"
+                    className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
                     disabled={isLoading}
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4 text-muted-foreground" />
                     )}
                   </Button>
                 </div>
-              </motion.div>
+              </div>
             </CardContent>
             <CardFooter className="flex flex-col space-y-4">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="w-full"
-              >
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                  disabled={isLoading}
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+              <div className="text-center">
+                <a
+                  href="#"
+                  className="text-sm text-muted-foreground hover:text-primary underline-offset-4 hover:underline"
                 >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Signing in...
-                    </>
-                  ) : (
-                    "Sign in"
-                  )}
-                </Button>
-              </motion.div>
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="text-center"
-              >
-                <a href="#" className="text-sm text-gray-300 hover:text-white underline-offset-4 hover:underline">
                   Forgot your password?
                 </a>
-              </motion.div>
+              </div>
             </CardFooter>
           </form>
         </Card>
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.7 }}
-          className="text-center"
-        >
-          <p className="text-sm text-gray-300">
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">
             {"Don't have an account? "}
-            <a href="#" className="font-medium text-blue-400 hover:text-blue-300 hover:underline underline-offset-4">
+            <a href="#" className="font-medium text-primary hover:underline underline-offset-4">
               Sign up
             </a>
           </p>
-        </motion.div>
-      </motion.div>
+        </div>
+      </div>
     </div>
   )
 }

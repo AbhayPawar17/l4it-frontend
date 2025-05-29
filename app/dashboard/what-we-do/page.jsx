@@ -21,7 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Edit, Trash2, Loader2, AlertCircle, CheckCircle, MoreVertical, Eye } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
 
-const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "http://ai.l4it.net:8000"
 
 export default function WhatWeDoPage() {
   const [sections, setSections] = useState([])
@@ -47,12 +47,12 @@ export default function WhatWeDoPage() {
 
     // Handle static uploads path
     if (image.startsWith("/static/")) {
-      return `http://localhost:8000${image}`
+      return `http://ai.l4it.net:8000${image}`
     }
 
     // If it's just a filename or relative path, assume it's in static/uploads
     const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `http://localhost:8000${cleanPath}`
+    return `http://ai.l4it.net:8000${cleanPath}`
   }
 
   // Fetch all sections

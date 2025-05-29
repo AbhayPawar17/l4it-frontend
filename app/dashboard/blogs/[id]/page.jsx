@@ -32,7 +32,7 @@ import {
 import { useAuth } from "../../../../contexts/auth-context"
 import { RichTextEditor } from "../../../../components/rich-text-editor"
 
-const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "http://ai.l4it.net:8000"
 
 export default function BlogDetailPage() {
   const [blog, setBlog] = useState(null)
@@ -60,27 +60,27 @@ export default function BlogDetailPage() {
   const isOwner = blog && user && blog.user_id === user.id
 
   // Function to get proper image URL
-  const getImageUrl = (image) => {
+  const getImageUrl = useCallback((image) => {
     if (!image) return "/placeholder.svg?height=800&width=1600"
     if (image.startsWith("http")) return image
 
     // Handle static uploads path
     if (image.startsWith("/static/")) {
-      return `http://localhost:8000${image}`
+      return `http://ai.l4it.net:8000${image}`
     }
 
     // If it's just a filename or relative path, assume it's in static/uploads
     const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `http://localhost:8000${cleanPath}`
-  }
+    return `http://ai.l4it.net:8000${cleanPath}`
+  }, [])
 
   // Fetch blog details
-  const fetchBlog = async () => {
+  const fetchBlog = useCallback(async () => {
     if (!token) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -116,65 +116,68 @@ export default function BlogDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, blogId, logout, router])
 
   // Update blog
-  const updateBlog = async (blogData) => {
-    if (!token || !isOwner) {
-      setError("You don't have permission to edit this blog post.")
-      return
-    }
-
-    try {
-      setSubmitting(true)
-      const formDataToSend = new FormData()
-
-      Object.keys(blogData).forEach((key) => {
-        if (key === "image" && blogData[key]) {
-          formDataToSend.append(key, blogData[key])
-        } else if (key !== "image") {
-          formDataToSend.append(key, blogData[key])
-        }
-      })
-
-      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formDataToSend,
-      })
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError("Session expired. Please login again.")
-          logout()
-          setTimeout(() => {
-            router.push("/")
-          }, 2000)
-          return
-        }
-        if (response.status === 403) {
-          setError("You don't have permission to edit this blog post.")
-          return
-        }
-        throw new Error(`HTTP error! status: ${response.status}`)
+  const updateBlog = useCallback(
+    async (blogData) => {
+      if (!token || !isOwner) {
+        setError("You don't have permission to edit this blog post.")
+        return
       }
 
-      const updatedBlog = await response.json()
-      setBlog(updatedBlog)
-      setSuccess("Blog updated successfully!")
-      setIsEditDialogOpen(false)
-      setImageError(false)
-    } catch (err) {
-      setError(`Failed to update blog: ${err.message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+      try {
+        setSubmitting(true)
+        const formDataToSend = new FormData()
+
+        Object.keys(blogData).forEach((key) => {
+          if (key === "image" && blogData[key]) {
+            formDataToSend.append(key, blogData[key])
+          } else if (key !== "image") {
+            formDataToSend.append(key, blogData[key])
+          }
+        })
+
+        const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formDataToSend,
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError("Session expired. Please login again.")
+            logout()
+            setTimeout(() => {
+              router.push("/")
+            }, 2000)
+            return
+          }
+          if (response.status === 403) {
+            setError("You don't have permission to edit this blog post.")
+            return
+          }
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const updatedBlog = await response.json()
+        setBlog(updatedBlog)
+        setSuccess("Blog updated successfully!")
+        setIsEditDialogOpen(false)
+        setImageError(false)
+      } catch (err) {
+        setError(`Failed to update blog: ${err.message}`)
+      } finally {
+        setSubmitting(false)
+      }
+    },
+    [token, isOwner, blogId, logout, router],
+  )
 
   // Delete blog
-  const deleteBlog = async () => {
+  const deleteBlog = useCallback(async () => {
     if (!token || !isOwner) {
       setError("You don't have permission to delete this blog post.")
       return
@@ -183,7 +186,7 @@ export default function BlogDetailPage() {
     if (!confirm("Are you sure you want to delete this blog post? This action cannot be undone.")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -213,60 +216,68 @@ export default function BlogDetailPage() {
     } catch (err) {
       setError(`Failed to delete blog: ${err.message}`)
     }
-  }
+  }, [token, isOwner, blogId, logout, router])
 
   // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault()
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
 
-    if (!formData.heading.trim()) {
-      setError("Heading is required")
-      return
-    }
+      if (!formData.heading.trim()) {
+        setError("Heading is required")
+        return
+      }
 
-    if (!formData.short_description.trim()) {
-      setError("Short description is required")
-      return
-    }
+      if (!formData.short_description.trim()) {
+        setError("Short description is required")
+        return
+      }
 
-    if (!formData.content.trim()) {
-      setError("Content is required")
-      return
-    }
+      if (!formData.content.trim()) {
+        setError("Content is required")
+        return
+      }
 
-    updateBlog(formData)
-  }
+      updateBlog(formData)
+    },
+    [formData, updateBlog],
+  )
 
   // Handle file input change
-  const handleImageChange = (e) => {
+  const handleImageChange = useCallback((e) => {
     const file = e.target.files[0]
     setFormData((prev) => ({ ...prev, image: file }))
-  }
+  }, [])
 
   // Handle input changes
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  }, [])
 
   // Open edit dialog
-  const openEditDialog = () => {
+  const openEditDialog = useCallback(() => {
     if (!isOwner) {
       setError("You don't have permission to edit this blog post.")
       return
     }
     setIsEditDialogOpen(true)
-  }
+  }, [isOwner])
 
   // Handle image error
-  const handleImageError = () => {
+  const handleImageError = useCallback(() => {
     setImageError(true)
-  }
+  }, [])
+
+  // Navigate back using client-side navigation
+  const goBack = useCallback(() => {
+    router.back()
+  }, [router])
 
   useEffect(() => {
     if (token && blogId) {
       fetchBlog()
     }
-  }, [token, blogId])
+  }, [token, blogId, fetchBlog])
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -296,7 +307,7 @@ export default function BlogDetailPage() {
   if (!blog) {
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -354,7 +365,7 @@ export default function BlogDetailPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>

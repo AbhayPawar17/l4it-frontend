@@ -14,8 +14,9 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Button } from "@/components/ui/button"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname } from "next/navigation"
 import { useAuth } from "../contexts/auth-context"
+import Link from "next/link"
 
 const menuItems = [
   {
@@ -39,7 +40,12 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Newsletter",
+    title: "Contact Us",
+    url: "/dashboard/contact-us",
+    icon: Mail,
+  },
+  {
+    title: "Case-Study",
     url: "/dashboard/newsletter",
     icon: Mail,
   },
@@ -47,11 +53,19 @@ const menuItems = [
 
 export function AppSidebar() {
   const router = useRouter()
+  const pathname = usePathname()
   const { logout, user } = useAuth()
 
   const handleLogout = () => {
     logout()
     router.push("/")
+  }
+
+  const isActive = (url) => {
+    if (url === "/dashboard") {
+      return pathname === "/dashboard"
+    }
+    return pathname.startsWith(url)
   }
 
   return (
@@ -74,11 +88,11 @@ export function AppSidebar() {
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <a href={item.url}>
-                      <item.icon />
+                  <SidebarMenuButton asChild isActive={isActive(item.url)}>
+                    <Link href={item.url} className="flex items-center gap-2">
+                      <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useEffect } from "react"
 
 const AuthContext = createContext(undefined)
 
-const API_BASE_URL = "http://localhost:8000"
+const API_BASE_URL = "http://ai.l4it.net:8000"
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(null)

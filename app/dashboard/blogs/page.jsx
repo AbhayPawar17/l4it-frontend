@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -60,13 +60,12 @@ export default function BlogsPage() {
   const { token, user, logout } = useAuth()
   const router = useRouter()
 
-  // Memoized fetch function to prevent unnecessary re-renders
   const fetchBlogs = useCallback(async () => {
     if (!token) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/blogs/?skip=0&limit=100`, {
+      const response = await fetch(`${API_BASE_URL}/blog/?skip=0&limit=100`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -112,7 +111,7 @@ export default function BlogsPage() {
           }
         })
 
-        const response = await fetch(`${API_BASE_URL}/blogs/`, {
+        const response = await fetch(`${API_BASE_URL}/blog/`, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -164,7 +163,7 @@ export default function BlogsPage() {
           }
         })
 
-        const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+        const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -212,7 +211,7 @@ export default function BlogsPage() {
       if (!confirm("Are you sure you want to delete this blog post? This action cannot be undone.")) return
 
       try {
-        const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+        const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
           method: "DELETE",
           headers: {
             Authorization: `Bearer ${token}`,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -80,7 +80,7 @@ export default function BlogDetailPage() {
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -138,7 +138,7 @@ export default function BlogDetailPage() {
           }
         })
 
-        const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+        const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${token}`,
@@ -186,7 +186,7 @@ export default function BlogDetailPage() {
     if (!confirm("Are you sure you want to delete this blog post? This action cannot be undone.")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/blogs/${blogId}`, {
+      const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,

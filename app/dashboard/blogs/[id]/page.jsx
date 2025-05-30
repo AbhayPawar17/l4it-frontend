@@ -59,19 +59,37 @@ export default function BlogDetailPage() {
   // Check if current user is the owner
   const isOwner = blog && user && blog.user_id === user.id
 
-  // Function to get proper image URL
+  // Function to get proper image URL - FIXED VERSION
   const getImageUrl = useCallback((image) => {
-    if (!image) return "/placeholder.svg?height=800&width=1600"
-    if (image.startsWith("http")) return image
-
-    // Handle static uploads path
-    if (image.startsWith("/static/")) {
-      return `http://ai.l4it.net:8000${image}`
+    console.log("getImageUrl called with:", image)
+    
+    // Return placeholder immediately if no image
+    if (!image || image === undefined || image === null || image === '') {
+      return "/placeholder.svg?height=800&width=1600"
     }
-
-    // If it's just a filename or relative path, assume it's in static/uploads
-    const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `http://ai.l4it.net:8000${cleanPath}`
+    
+    // If it's already a full URL, return as-is
+    if (typeof image === 'string' && (image.startsWith("http://") || image.startsWith("https://"))) {
+      return image
+    }
+    
+    // Handle the specific format from your API: "/static/uploads/blog3.jpeg"
+    if (typeof image === 'string' && image.startsWith("/static/")) {
+      return `${API_BASE_URL}${image}`
+    }
+    
+    // Handle format without leading slash: "static/uploads/blog3.jpeg"
+    if (typeof image === 'string' && image.startsWith("static/")) {
+      return `${API_BASE_URL}/${image}`
+    }
+    
+    // If it's just a filename, assume it's in static/uploads/
+    if (typeof image === 'string') {
+      return `${API_BASE_URL}/static/uploads/${image}`
+    }
+    
+    // Fallback to placeholder
+    return "/placeholder.svg?height=800&width=1600"
   }, [])
 
   // Fetch blog details
@@ -99,6 +117,7 @@ export default function BlogDetailPage() {
       }
 
       const data = await response.json()
+      console.log("Fetched blog data:", data)
       setBlog(data)
       setFormData({
         image: null,
@@ -166,6 +185,9 @@ export default function BlogDetailPage() {
         setBlog(updatedBlog)
         setSuccess("Blog updated successfully!")
         setIsEditDialogOpen(false)
+        setImageError(false)
+        
+        // Reset the image error state when blog is updated
         setImageError(false)
       } catch (err) {
         setError(`Failed to update blog: ${err.message}`)
@@ -263,8 +285,9 @@ export default function BlogDetailPage() {
     setIsEditDialogOpen(true)
   }, [isOwner])
 
-  // Handle image error
-  const handleImageError = useCallback(() => {
+  // Handle image error - IMPROVED VERSION
+  const handleImageError = useCallback((e) => {
+    console.error("Image failed to load:", e.target.src)
     setImageError(true)
   }, [])
 
@@ -358,7 +381,10 @@ export default function BlogDetailPage() {
   const wordCount = countWords(blog.content)
   const metaTitleLength = countCharacters(blog.meta_title)
   const metaDescriptionLength = countCharacters(blog.meta_description)
-  const imageUrl = getImageUrl(blog.image_path)
+  
+  // Get the correct image field - check both possible field names
+  const blogImagePath = blog.image_path || blog.image || null
+  const imageUrl = getImageUrl(blogImagePath)
 
   return (
     <div className="space-y-6">
@@ -419,47 +445,45 @@ export default function BlogDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Featured Image Section - Always Display */}
+              {/* Featured Image Section - IMPROVED VERSION */}
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold">Featured Image</h3>
                 <div className="aspect-video relative overflow-hidden rounded-lg bg-muted border-2 border-dashed border-muted-foreground/25">
-                  {blog.image_path || !imageError ? (
+                  {blogImagePath && !imageError ? (
                     <img
-                      src={getImageUrl(blog.image_path) || "/placeholder.svg"}
-                      alt={blog.heading}
+                      src={imageUrl}
+                      alt={blog.heading || "Blog featured image"}
                       className="object-cover w-full h-full"
                       onError={handleImageError}
+                      onLoad={() => setImageError(false)}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <ImageIcon className="h-16 w-16 mb-4" />
-                      <p className="text-lg font-medium">Image failed to load</p>
-                      <p className="text-sm text-center px-4">Path: {blog.image_path}</p>
+                      <p className="text-lg font-medium">
+                        {blogImagePath ? "Image failed to load" : "No featured image"}
+                      </p>
+                      {blogImagePath && (
+                        <>
+                          <p className="text-sm text-center px-4 mt-2">Path: {blogImagePath}</p>
+                          <p className="text-xs text-center px-4 mt-1 text-red-500">URL: {imageUrl}</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-                {blog.image_path && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>
-                      <span className="font-medium">Image Path:</span> {blog.image_path}
-                    </div>
-                    <div>
-                      <span className="font-medium">Full URL:</span> {getImageUrl(blog.image_path)}
-                    </div>
-                  </div>
-                )}
               </div>
 
-            {/* Content Section */}
-<div className="space-y-2">
-  <h3 className="text-lg font-semibold">Blog Content</h3>
-  <div className="prose max-w-none overflow-hidden">
-    <div
-      dangerouslySetInnerHTML={{ __html: blog.content || "No content available" }}
-      className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
-    />
-  </div>
-</div>
+              {/* Content Section */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Blog Content</h3>
+                <div className="prose max-w-none overflow-hidden">
+                  <div
+                    dangerouslySetInnerHTML={{ __html: blog.content || "No content available" }}
+                    className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
+                  />
+                </div>
+              </div>
 
               {/* Meta Description Section */}
               {blog.meta_description && (
@@ -519,6 +543,7 @@ export default function BlogDetailPage() {
                     "meta_title",
                     "meta_description",
                     "image_path",
+                    "image",
                   ].includes(key) &&
                   blog[key] !== null &&
                   blog[key] !== undefined &&
@@ -554,7 +579,7 @@ export default function BlogDetailPage() {
               </div>
               <div>
                 <span className="font-medium">Featured Image:</span>{" "}
-                {blog.image_path ? (imageError ? "Error loading" : "Available") : "Not set"}
+                {blogImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
               </div>
               <div>
                 <span className="font-medium">Heading Length:</span> {countCharacters(blog.heading)} characters
@@ -653,7 +678,7 @@ export default function BlogDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Featured Image</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {blog.image_path && <p className="text-xs text-muted-foreground">Current image: {blog.image_path}</p>}
+                {blogImagePath && <p className="text-xs text-muted-foreground">Current image: {blogImagePath}</p>}
               </div>
 
               <div className="space-y-2">

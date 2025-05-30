@@ -30,6 +30,7 @@ import {
   ImageIcon,
 } from "lucide-react"
 import { useAuth } from "../../../../contexts/auth-context"
+import { FroalaTextEditor } from "@/components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
@@ -381,12 +382,15 @@ export default function InfoDetailPage() {
               </div>
 
               {/* Content Section */}
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Content</h3>
-                <div className="prose max-w-none">
-                  <p className="leading-relaxed border rounded-lg p-4 bg-muted/30">{info.content}</p>
-                </div>
+                        <div className="space-y-2">
+              <h3 className="text-lg font-semibold">Content</h3>
+              <div className="prose max-w-none overflow-hidden">
+                <div
+                  className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
+                  dangerouslySetInnerHTML={{ __html: info?.content || "No content available" }}
+                />
               </div>
+            </div>
             </CardContent>
           </Card>
         </div>
@@ -509,13 +513,11 @@ export default function InfoDetailPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
-                <Textarea
-                  id="edit-content"
-                  placeholder="Enter content..."
-                  value={formData.content}
-                  onChange={(e) => handleInputChange("content", e.target.value)}
-                  rows={4}
-                />
+                <FroalaTextEditor
+          value={formData.content}
+          onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
+          placeholder="Enter section content..."
+        />
               </div>
 
               <div className="space-y-2">

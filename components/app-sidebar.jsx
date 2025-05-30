@@ -46,7 +46,7 @@ const menuItems = [
   },
   {
     title: "Case-Study",
-    url: "/dashboard/newsletter",
+    url: "/dashboard/case-studies",
     icon: Mail,
   },
 ]

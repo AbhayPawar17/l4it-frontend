@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FroalaTextEditor } from "@/components/rich-text-editor"
 import {
   Dialog,
   DialogContent,
@@ -21,7 +22,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Loader2, AlertCircle, CheckCircle, Eye, Calendar, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
-import { RichTextEditor } from "../../../components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
@@ -538,7 +538,7 @@ export default function BlogsPage() {
 
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
-                  <RichTextEditor
+                  <FroalaTextEditor
                     value={formData.content}
                     onChange={(value) => handleInputChange("content", value)}
                     placeholder="Write your blog content here..."
@@ -661,7 +661,7 @@ export default function BlogsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
-                <RichTextEditor
+                <FroalaTextEditor
                   value={formData.content}
                   onChange={(value) => handleInputChange("content", value)}
                   placeholder="Write your blog content here..."

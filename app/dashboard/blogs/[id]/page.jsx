@@ -30,7 +30,7 @@ import {
   ImageIcon,
 } from "lucide-react"
 import { useAuth } from "../../../../contexts/auth-context"
-import { RichTextEditor } from "../../../../components/rich-text-editor"
+import { FroalaTextEditor } from "../../../../components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
@@ -450,16 +450,16 @@ export default function BlogDetailPage() {
                 )}
               </div>
 
-              {/* Content Section */}
-              <div className="space-y-2">
-                <h3 className="text-lg font-semibold">Blog Content</h3>
-                <div className="prose max-w-none">
-                  <div
-                    dangerouslySetInnerHTML={{ __html: blog.content || "No content available" }}
-                    className="leading-relaxed"
-                  />
-                </div>
-              </div>
+            {/* Content Section */}
+<div className="space-y-2">
+  <h3 className="text-lg font-semibold">Blog Content</h3>
+  <div className="prose max-w-none overflow-hidden">
+    <div
+      dangerouslySetInnerHTML={{ __html: blog.content || "No content available" }}
+      className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
+    />
+  </div>
+</div>
 
               {/* Meta Description Section */}
               {blog.meta_description && (
@@ -679,7 +679,7 @@ export default function BlogDetailPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
-                <RichTextEditor
+                <FroalaTextEditor
                   value={formData.content}
                   onChange={(value) => handleInputChange("content", value)}
                   placeholder="Write your blog content here..."

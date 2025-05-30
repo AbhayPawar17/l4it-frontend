@@ -22,7 +22,7 @@ export default function DashboardPage() {
       icon: Users,
     },
     {
-      title: "Newsletter Subscribers",
+      title: "CaseStudy",
       value: "1,234",
       description: "Total subscribers",
       icon: Mail,
@@ -76,7 +76,7 @@ export default function DashboardPage() {
               <div className="flex items-center space-x-4">
                 <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
                 <div className="flex-1">
-                  <p className="text-sm font-medium">Newsletter sent</p>
+                  <p className="text-sm font-medium">CaseStudy sent</p>
                   <p className="text-xs text-muted-foreground">1 day ago</p>
                 </div>
               </div>
@@ -99,9 +99,9 @@ export default function DashboardPage() {
                 <p className="text-sm font-medium">Add New Service</p>
                 <p className="text-xs text-muted-foreground">Create a new service offering</p>
               </a>
-              <a href="/dashboard/newsletter" className="block p-2 rounded hover:bg-muted transition-colors">
-                <p className="text-sm font-medium">Send Newsletter</p>
-                <p className="text-xs text-muted-foreground">Create and send newsletter</p>
+              <a href="/dashboard/case-studies" className="block p-2 rounded hover:bg-muted transition-colors">
+                <p className="text-sm font-medium">Send Case Study</p>
+                <p className="text-xs text-muted-foreground">Create and send CaseStudy</p>
               </a>
             </div>
           </CardContent>

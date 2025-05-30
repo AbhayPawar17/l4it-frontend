@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -20,6 +19,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Edit, Trash2, Loader2, AlertCircle, CheckCircle, MoreVertical, Eye } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
+import { FroalaTextEditor } from "@/components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
@@ -340,7 +340,7 @@ export default function WhatWeDoPage() {
               Add Section
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Section</DialogTitle>
               <DialogDescription>Add a new section to your company information.</DialogDescription>
@@ -349,13 +349,11 @@ export default function WhatWeDoPage() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
-                  <Textarea
-                    id="content"
-                    placeholder="Enter section content..."
-                    value={formData.content}
-                    onChange={(e) => handleInputChange("content", e.target.value)}
-                    rows={4}
-                  />
+                 <FroalaTextEditor
+  value={formData.content}
+  onChange={(content) => setFormData(prev => ({...prev, content}))}
+  placeholder="Enter section content..."
+/>
                 </div>
 
                 <div className="space-y-2">
@@ -497,7 +495,7 @@ export default function WhatWeDoPage() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Section</DialogTitle>
             <DialogDescription>Update section information.</DialogDescription>
@@ -506,7 +504,7 @@ export default function WhatWeDoPage() {
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
-                <Textarea
+                <FroalaTextEditor
                   id="edit-content"
                   placeholder="Enter section content..."
                   value={formData.content}

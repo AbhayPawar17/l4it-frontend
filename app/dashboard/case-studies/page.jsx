@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { FroalaTextEditor } from "@/components/rich-text-editor"
 import {
   Dialog,
@@ -21,18 +22,24 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Loader2, AlertCircle, CheckCircle, Eye, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
-import { RichTextEditor } from "../../../components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
-export default function ServicesPage() {
-  const [services, setServices] = useState([])
+export default function CaseStudiesPage() {
+  const [caseStudies, setCaseStudies] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
-  const [editingService, setEditingService] = useState(null)
-  const [formData, setFormData] = useState({ content: "", image: null })
+  const [editingCaseStudy, setEditingCaseStudy] = useState(null)
+  const [formData, setFormData] = useState({ 
+    heading: "",
+    short_description: "",
+    content: "", 
+    meta_title: "",
+    meta_description: "",
+    image: null 
+  })
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(null)
 
@@ -54,13 +61,13 @@ export default function ServicesPage() {
     return `http://ai.l4it.net:8000${cleanPath}`
   }
 
-  // Fetch all services
-  const fetchServices = async () => {
+  // Fetch all case studies
+  const fetchCaseStudies = async () => {
     if (!token) return
 
     try {
       setLoading(true)
-      const response = await fetch(`${API_BASE_URL}/msp-services`, {
+      const response = await fetch(`${API_BASE_URL}/case-studies`, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -80,29 +87,33 @@ export default function ServicesPage() {
       }
 
       const data = await response.json()
-      setServices(data.reverse())
+      setCaseStudies(data.reverse())
       setError(null)
     } catch (err) {
-      setError(`Failed to fetch services: ${err.message}`)
-      console.error("Error fetching services:", err)
+      setError(`Failed to fetch case studies: ${err.message}`)
+      console.error("Error fetching case studies:", err)
     } finally {
       setLoading(false)
     }
   }
 
-  // Create new service
-  const createService = async (content, image) => {
+  // Create new case study
+  const createCaseStudy = async (caseStudyData, image) => {
     if (!token) return
 
     try {
       setSubmitting(true)
       const formData = new FormData()
-      formData.append("content", content)
+      formData.append("heading", caseStudyData.heading)
+      formData.append("short_description", caseStudyData.short_description)
+      formData.append("content", caseStudyData.content)
+      formData.append("meta_title", caseStudyData.meta_title)
+      formData.append("meta_description", caseStudyData.meta_description)
       if (image) {
         formData.append("image", image)
       }
 
-      const response = await fetch(`${API_BASE_URL}/msp-services/`, {
+      const response = await fetch(`${API_BASE_URL}/case-studies/`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -123,31 +134,42 @@ export default function ServicesPage() {
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
-      const newService = await response.json()
-      setServices((prev) => [...prev, newService])
-      setSuccess("Service created successfully!")
+      const newCaseStudy = await response.json()
+      setCaseStudies((prev) => [...prev, newCaseStudy])
+      setSuccess("Case study created successfully!")
       setIsCreateDialogOpen(false)
-      setFormData({ content: "", image: null })
+      setFormData({ 
+        heading: "",
+        short_description: "",
+        content: "", 
+        meta_title: "",
+        meta_description: "",
+        image: null 
+      })
     } catch (err) {
-      setError(`Failed to create service: ${err.message}`)
+      setError(`Failed to create case study: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Update service
-  const updateService = async (serviceId, content, image) => {
+  // Update case study
+  const updateCaseStudy = async (caseStudyId, caseStudyData, image) => {
     if (!token) return
 
     try {
       setSubmitting(true)
       const formData = new FormData()
-      formData.append("content", content)
+      formData.append("heading", caseStudyData.heading)
+      formData.append("short_description", caseStudyData.short_description)
+      formData.append("content", caseStudyData.content)
+      formData.append("meta_title", caseStudyData.meta_title)
+      formData.append("meta_description", caseStudyData.meta_description)
       if (image) {
         formData.append("image", image)
       }
 
-      const response = await fetch(`${API_BASE_URL}/msp-services/${serviceId}`, {
+      const response = await fetch(`${API_BASE_URL}/case-studies/${caseStudyId}`, {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -165,34 +187,41 @@ export default function ServicesPage() {
           return
         }
         if (response.status === 403) {
-          setError("You don't have permission to edit this service.")
+          setError("You don't have permission to edit this case study.")
           return
         }
         const errorData = await response.json().catch(() => ({}))
         throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
-      const updatedService = await response.json()
-      setServices((prev) => prev.map((service) => (service.id === serviceId ? updatedService : service)))
-      setSuccess("Service updated successfully!")
+      const updatedCaseStudy = await response.json()
+      setCaseStudies((prev) => prev.map((caseStudy) => (caseStudy.id === caseStudyId ? updatedCaseStudy : caseStudy)))
+      setSuccess("Case study updated successfully!")
       setIsEditDialogOpen(false)
-      setEditingService(null)
-      setFormData({ content: "", image: null })
+      setEditingCaseStudy(null)
+      setFormData({ 
+        heading: "",
+        short_description: "",
+        content: "", 
+        meta_title: "",
+        meta_description: "",
+        image: null 
+      })
     } catch (err) {
-      setError(`Failed to update service: ${err.message}`)
+      setError(`Failed to update case study: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
   }
 
-  // Delete service
-  const deleteService = async (serviceId) => {
+  // Delete case study
+  const deleteCaseStudy = async (caseStudyId) => {
     if (!token) return
 
-    if (!confirm("Are you sure you want to delete this service? This action cannot be undone.")) return
+    if (!confirm("Are you sure you want to delete this case study? This action cannot be undone.")) return
 
     try {
-      const response = await fetch(`${API_BASE_URL}/msp-services/${serviceId}`, {
+      const response = await fetch(`${API_BASE_URL}/case-studies/${caseStudyId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -209,45 +238,70 @@ export default function ServicesPage() {
           return
         }
         if (response.status === 403) {
-          setError("You don't have permission to delete this service.")
+          setError("You don't have permission to delete this case study.")
           return
         }
         throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      setServices((prev) => prev.filter((service) => service.id !== serviceId))
-      setSuccess("Service deleted successfully!")
+      setCaseStudies((prev) => prev.filter((caseStudy) => caseStudy.id !== caseStudyId))
+      setSuccess("Case study deleted successfully!")
     } catch (err) {
-      setError(`Failed to delete service: ${err.message}`)
+      setError(`Failed to delete case study: ${err.message}`)
     }
   }
 
   // Handle create form submission
   const handleCreateSubmit = (e) => {
     e.preventDefault()
-    const { content, image } = formData
+    const { heading, short_description, content, meta_title, meta_description, image } = formData
+
+    if (!heading.trim()) {
+      setError("Heading is required")
+      return
+    }
+
+    if (!short_description.trim()) {
+      setError("Short description is required")
+      return
+    }
 
     if (!content.trim()) {
       setError("Content is required")
       return
     }
 
-    createService(content, image)
+    createCaseStudy({ heading, short_description, content, meta_title, meta_description }, image)
   }
 
   // Handle edit form submission
   const handleEditSubmit = (e) => {
     e.preventDefault()
-    const { content, image } = formData
+    const { heading, short_description, content, meta_title, meta_description, image } = formData
+
+    if (!heading.trim()) {
+      setError("Heading is required")
+      return
+    }
+
+    if (!short_description.trim()) {
+      setError("Short description is required")
+      return
+    }
 
     if (!content.trim()) {
       setError("Content is required")
       return
     }
 
-    if (!editingService) return
+    if (!editingCaseStudy) return
 
-    updateService(editingService.id, content, image)
+    updateCaseStudy(editingCaseStudy.id, { heading, short_description, content, meta_title, meta_description }, image)
+  }
+
+  // Handle form data changes
+  const handleFormChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
   // Handle file input change
@@ -258,42 +312,56 @@ export default function ServicesPage() {
 
   // Reset form and close dialogs
   const resetForm = () => {
-    setFormData({ content: "", image: null })
+    setFormData({ 
+      heading: "",
+      short_description: "",
+      content: "", 
+      meta_title: "",
+      meta_description: "",
+      image: null 
+    })
     setError(null)
     setSuccess(null)
   }
 
   // Open edit dialog
-  const openEditDialog = (service) => {
-    if (service.user_id !== user?.id) {
-      setError("You don't have permission to edit this service.")
+  const openEditDialog = (caseStudy) => {
+    if (caseStudy.user_id !== user?.id) {
+      setError("You don't have permission to edit this case study.")
       return
     }
-    setEditingService(service)
-    setFormData({ content: service.content || "", image: null })
+    setEditingCaseStudy(caseStudy)
+    setFormData({ 
+      heading: caseStudy.heading || "",
+      short_description: caseStudy.short_description || "",
+      content: caseStudy.content || "", 
+      meta_title: caseStudy.meta_title || "",
+      meta_description: caseStudy.meta_description || "",
+      image: null 
+    })
     setIsEditDialogOpen(true)
   }
 
   // Handle delete click
-  const handleDeleteClick = (service) => {
-    if (service.user_id !== user?.id) {
-      setError("You don't have permission to delete this service.")
+  const handleDeleteClick = (caseStudy) => {
+    if (caseStudy.user_id !== user?.id) {
+      setError("You don't have permission to delete this case study.")
       return
     }
-    deleteService(service.id)
+    deleteCaseStudy(caseStudy.id)
   }
 
-  // Navigate to service detail
-  const viewServiceDetail = (serviceId) => {
-    router.push(`/dashboard/services/${serviceId}`)
+  // Navigate to case study detail
+  const viewCaseStudyDetail = (caseStudyId) => {
+    router.push(`/dashboard/case-studies/${caseStudyId}`)
   }
 
-  // Check if user owns the service
-  const isOwner = (service) => service.user_id === user?.id
+  // Check if user owns the case study
+  const isOwner = (caseStudy) => caseStudy.user_id === user?.id
 
   useEffect(() => {
     if (token) {
-      fetchServices()
+      fetchCaseStudies()
     }
   }, [token])
 
@@ -317,7 +385,7 @@ export default function ServicesPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin" />
-        <span className="ml-2">Loading services...</span>
+        <span className="ml-2">Loading case studies...</span>
       </div>
     )
   }
@@ -327,31 +395,69 @@ export default function ServicesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Services</h1>
-          <p className="text-muted-foreground">Manage your service offerings and content.</p>
+          <h1 className="text-3xl font-bold tracking-tight">Case Studies</h1>
+          <p className="text-muted-foreground">Manage your case studies and success stories.</p>
         </div>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button onClick={resetForm}>
               <Plus className="mr-2 h-4 w-4" />
-              Add Service
+              Add Case Study
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Create New Service</DialogTitle>
+              <DialogTitle>Create New Case Study</DialogTitle>
               <DialogDescription>
-                Add a new service to your offerings. Fill in the content and optionally upload an image.
+                Add a new case study to showcase your work. Fill in all required fields.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit}>
               <div className="grid gap-4 py-3">
                 <div className="space-y-2">
+                  <Label htmlFor="heading">Heading *</Label>
+                  <Input
+                    id="heading"
+                    value={formData.heading}
+                    onChange={(e) => handleFormChange("heading", e.target.value)}
+                    placeholder="Enter case study heading..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="short_description">Short Description *</Label>
+                  <Textarea
+                    id="short_description"
+                    value={formData.short_description}
+                    onChange={(e) => handleFormChange("short_description", e.target.value)}
+                    placeholder="Enter a brief description..."
+                    rows={3}
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
                   <FroalaTextEditor
                     value={formData.content}
-                    onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
-                    placeholder="Write your service content here..."
+                    onChange={(value) => handleFormChange("content", value)}
+                    placeholder="Write your case study content here..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="meta_title">Meta Title</Label>
+                  <Input
+                    id="meta_title"
+                    value={formData.meta_title}
+                    onChange={(e) => handleFormChange("meta_title", e.target.value)}
+                    placeholder="SEO meta title..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="meta_description">Meta Description</Label>
+                  <Textarea
+                    id="meta_description"
+                    value={formData.meta_description}
+                    onChange={(e) => handleFormChange("meta_description", e.target.value)}
+                    placeholder="SEO meta description..."
+                    rows={2}
                   />
                 </div>
                 <div className="space-y-2">
@@ -370,7 +476,7 @@ export default function ServicesPage() {
                       Creating...
                     </>
                   ) : (
-                    "Create Service"
+                    "Create Case Study"
                   )}
                 </Button>
               </DialogFooter>
@@ -394,30 +500,30 @@ export default function ServicesPage() {
         </Alert>
       )}
 
-      {/* Services Grid */}
-      {services.length === 0 ? (
+      {/* Case Studies Grid */}
+      {caseStudies.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center space-y-2">
-              <h3 className="text-lg font-semibold">No services found</h3>
-              <p className="text-muted-foreground">Get started by creating your first service.</p>
+              <h3 className="text-lg font-semibold">No case studies found</h3>
+              <p className="text-muted-foreground">Get started by creating your first case study.</p>
               <Button onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Service
+                Add Case Study
               </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {services.map((service) => (
-            <Card key={service.id} className="hover:shadow-lg transition-shadow">
+          {caseStudies.map((caseStudy) => (
+            <Card key={caseStudy.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Service #{service.id}</CardTitle>
+                  <CardTitle className="text-lg line-clamp-1">{caseStudy.heading}</CardTitle>
                   <div className="flex items-center space-x-2">
                     <Badge variant="default">Active</Badge>
-                    {isOwner(service) && <Badge variant="secondary">Owner</Badge>}
+                    {isOwner(caseStudy) && <Badge variant="secondary">Owner</Badge>}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
@@ -425,18 +531,18 @@ export default function ServicesPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => viewServiceDetail(service.id)}>
+                        <DropdownMenuItem onClick={() => viewCaseStudyDetail(caseStudy.id)}>
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        {isOwner(service) && (
+                        {isOwner(caseStudy) && (
                           <>
-                            <DropdownMenuItem onClick={() => openEditDialog(service)}>
+                            <DropdownMenuItem onClick={() => openEditDialog(caseStudy)}>
                               <Edit className="mr-2 h-4 w-4" />
                               Edit
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDeleteClick(service)}
+                              onClick={() => handleDeleteClick(caseStudy)}
                               className="text-destructive focus:text-destructive"
                             >
                               <Trash2 className="mr-2 h-4 w-4" />
@@ -451,11 +557,11 @@ export default function ServicesPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {service.image_path && (
+                  {caseStudy.image && (
                     <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
                       <img
-                        src={getImageUrl(service.image_path) || "/placeholder.svg"}
-                        alt="Service image"
+                        src={getImageUrl(caseStudy.image) || "/placeholder.svg"}
+                        alt="Case study image"
                         className="object-cover w-full h-full"
                         onError={(e) => {
                           e.target.style.display = "none"
@@ -464,29 +570,24 @@ export default function ServicesPage() {
                     </div>
                   )}
                   <div>
-                    <div
-                      dangerouslySetInnerHTML={{
-                        __html:
-                          service.content?.substring(0, 150) + (service.content?.length > 150 ? "..." : "") ||
-                          "No content available",
-                      }}
-                      className="text-sm text-muted-foreground line-clamp-3"
-                    />
+                    <p className="text-sm text-muted-foreground line-clamp-3">
+                      {caseStudy.short_description || "No description available"}
+                    </p>
                   </div>
                   <div className="flex items-center justify-between">
-                    <Button variant="outline" size="sm" onClick={() => viewServiceDetail(service.id)}>
+                    <Button variant="outline" size="sm" onClick={() => viewCaseStudyDetail(caseStudy.id)}>
                       <Eye className="mr-2 h-3 w-3" />
                       View Details
                     </Button>
-                    {isOwner(service) && (
+                    {isOwner(caseStudy) && (
                       <div className="flex items-center space-x-1">
-                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(service)}>
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(caseStudy)}>
                           <Edit className="h-3 w-3" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleDeleteClick(service)}
+                          onClick={() => handleDeleteClick(caseStudy)}
                           className="text-destructive hover:text-destructive"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -505,24 +606,62 @@ export default function ServicesPage() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Service</DialogTitle>
-            <DialogDescription>Update the service content and image.</DialogDescription>
+            <DialogTitle>Edit Case Study</DialogTitle>
+            <DialogDescription>Update the case study information.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-3">
               <div className="space-y-2">
+                <Label htmlFor="edit-heading">Heading *</Label>
+                <Input
+                  id="edit-heading"
+                  value={formData.heading}
+                  onChange={(e) => handleFormChange("heading", e.target.value)}
+                  placeholder="Enter case study heading..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-short_description">Short Description *</Label>
+                <Textarea
+                  id="edit-short_description"
+                  value={formData.short_description}
+                  onChange={(e) => handleFormChange("short_description", e.target.value)}
+                  placeholder="Enter a brief description..."
+                  rows={3}
+                />
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor 
                   value={formData.content}
-                  onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
-                  placeholder="Write your service content here..."
+                  onChange={(value) => handleFormChange("content", value)}
+                  placeholder="Write your case study content here..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-meta_title">Meta Title</Label>
+                <Input
+                  id="edit-meta_title"
+                  value={formData.meta_title}
+                  onChange={(e) => handleFormChange("meta_title", e.target.value)}
+                  placeholder="SEO meta title..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-meta_description">Meta Description</Label>
+                <Textarea
+                  id="edit-meta_description"
+                  value={formData.meta_description}
+                  onChange={(e) => handleFormChange("meta_description", e.target.value)}
+                  placeholder="SEO meta description..."
+                  rows={2}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image (optional)</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {editingService?.image_path && (
-                  <p className="text-xs text-muted-foreground">Current image: {editingService.image_path}</p>
+                {editingCaseStudy?.image && (
+                  <p className="text-xs text-muted-foreground">Current image: {editingCaseStudy.image}</p>
                 )}
               </div>
             </div>
@@ -537,7 +676,7 @@ export default function ServicesPage() {
                     Updating...
                   </>
                 ) : (
-                  "Update Service"
+                  "Update Case Study"
                 )}
               </Button>
             </DialogFooter>

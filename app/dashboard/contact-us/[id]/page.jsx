@@ -37,7 +37,6 @@ export default function ContactDetailPage() {
 
   // Fetch contact details
   const fetchContact = async () => {
-    if (!token) return
 
     try {
       setLoading(true)

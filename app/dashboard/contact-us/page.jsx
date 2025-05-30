@@ -35,7 +35,6 @@ export default function ContactUsPage() {
 
   // Fetch all contact submissions
   const fetchContacts = async () => {
-    if (!token) return
 
     try {
       setLoading(true)

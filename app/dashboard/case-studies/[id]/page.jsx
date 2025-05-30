@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -59,23 +59,39 @@ export default function CaseStudyDetailPage() {
   // Check if current user is the owner
   const isOwner = caseStudy && user && caseStudy.user_id === user.id
 
-  // Function to get proper image URL
-  const getImageUrl = (image) => {
-    if (!image) return "/placeholder.svg?height=800&width=1600"
-    if (image.startsWith("http")) return image
-
-    // Handle static uploads path
-    if (image.startsWith("/static/")) {
+  // Function to get proper image URL - IMPROVED VERSION (same as services)
+  const getImageUrl = useCallback((image) => {
+    console.log("getImageUrl called with:", image)
+    
+    // Return placeholder immediately if no image
+    if (!image || image === undefined || image === null || image === '') {
+      return "/placeholder.svg?height=800&width=1600"
+    }
+    
+    if (typeof image === 'string' && (image.startsWith("http://") || image.startsWith("https://"))) {
+      return image
+    }
+    
+    // Handle the specific format from your API: "/static/uploads/case_study.jpeg"
+    if (typeof image === 'string' && image.startsWith("/static/")) {
       return `${API_BASE_URL}${image}`
     }
-
-    // If it's just a filename or relative path, assume it's in static/uploads
-    const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `${API_BASE_URL}${cleanPath}`
-  }
+    
+    // Handle format without leading slash: "static/uploads/case_study.jpeg"
+    if (typeof image === 'string' && image.startsWith("static/")) {
+      return `${API_BASE_URL}/${image}`
+    }
+    
+    if (typeof image === 'string') {
+      return `${API_BASE_URL}/static/uploads/${image}`
+    }
+    
+    // Fallback to placeholder
+    return "/placeholder.svg?height=800&width=1600"
+  }, [])
 
   // Fetch case study details
-  const fetchCaseStudy = async () => {
+  const fetchCaseStudy = useCallback(async () => {
     if (!token) return
 
     try {
@@ -99,6 +115,7 @@ export default function CaseStudyDetailPage() {
       }
 
       const data = await response.json()
+      console.log("Fetched case study data:", data)
       setCaseStudy(data)
       setFormData({ 
         heading: data.heading || "",
@@ -116,66 +133,72 @@ export default function CaseStudyDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, caseStudyId, logout, router])
 
   // Update case study
-  const updateCaseStudy = async (caseStudyData, image) => {
-    if (!token || !isOwner) {
-      setError("You don't have permission to edit this case study.")
-      return
-    }
-
-    try {
-      setSubmitting(true)
-      const formData = new FormData()
-      formData.append("heading", caseStudyData.heading)
-      formData.append("short_description", caseStudyData.short_description)
-      formData.append("content", caseStudyData.content)
-      formData.append("meta_title", caseStudyData.meta_title)
-      formData.append("meta_description", caseStudyData.meta_description)
-      if (image) {
-        formData.append("image", image)
+  const updateCaseStudy = useCallback(
+    async (caseStudyData, image) => {
+      if (!token || !isOwner) {
+        setError("You don't have permission to edit this case study.")
+        return
       }
 
-      const response = await fetch(`${API_BASE_URL}/case-studies/${caseStudyId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      })
+      try {
+        setSubmitting(true)
+        const formData = new FormData()
+        formData.append("heading", caseStudyData.heading)
+        formData.append("short_description", caseStudyData.short_description)
+        formData.append("content", caseStudyData.content)
+        formData.append("meta_title", caseStudyData.meta_title)
+        formData.append("meta_description", caseStudyData.meta_description)
+        if (image) {
+          formData.append("image", image)
+        }
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError("Session expired. Please login again.")
-          logout()
-          setTimeout(() => {
-            router.push("/")
-          }, 2000)
-          return
+        const response = await fetch(`${API_BASE_URL}/case-studies/${caseStudyId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formData,
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError("Session expired. Please login again.")
+            logout()
+            setTimeout(() => {
+              router.push("/")
+            }, 2000)
+            return
+          }
+          if (response.status === 403) {
+            setError("You don't have permission to edit this case study.")
+            return
+          }
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
         }
-        if (response.status === 403) {
-          setError("You don't have permission to edit this case study.")
-          return
-        }
-        const errorData = await response.json().catch(() => ({}))
-        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
+
+        const updatedCaseStudy = await response.json()
+        setCaseStudy(updatedCaseStudy)
+        setSuccess("Case study updated successfully!")
+        setIsEditDialogOpen(false)
+        setImageError(false)
+        
+        // Reset the image error state when case study is updated
+        setImageError(false)
+      } catch (err) {
+        setError(`Failed to update case study: ${err.message}`)
+      } finally {
+        setSubmitting(false)
       }
-
-      const updatedCaseStudy = await response.json()
-      setCaseStudy(updatedCaseStudy)
-      setSuccess("Case study updated successfully!")
-      setIsEditDialogOpen(false)
-      setImageError(false)
-    } catch (err) {
-      setError(`Failed to update case study: ${err.message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+    },
+    [token, isOwner, caseStudyId, logout, router],
+  )
 
   // Delete case study
-  const deleteCaseStudy = async () => {
+  const deleteCaseStudy = useCallback(async () => {
     if (!token || !isOwner) {
       setError("You don't have permission to delete this case study.")
       return
@@ -214,44 +237,47 @@ export default function CaseStudyDetailPage() {
     } catch (err) {
       setError(`Failed to delete case study: ${err.message}`)
     }
-  }
+  }, [token, isOwner, caseStudyId, logout, router])
 
   // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const { heading, short_description, content, meta_title, meta_description, image } = formData
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
+      const { heading, short_description, content, meta_title, meta_description, image } = formData
 
-    if (!heading.trim()) {
-      setError("Heading is required")
-      return
-    }
+      if (!heading.trim()) {
+        setError("Heading is required")
+        return
+      }
 
-    if (!short_description.trim()) {
-      setError("Short description is required")
-      return
-    }
+      if (!short_description.trim()) {
+        setError("Short description is required")
+        return
+      }
 
-    if (!content.trim()) {
-      setError("Content is required")
-      return
-    }
+      if (!content.trim()) {
+        setError("Content is required")
+        return
+      }
 
-    updateCaseStudy({ heading, short_description, content, meta_title, meta_description }, image)
-  }
+      updateCaseStudy({ heading, short_description, content, meta_title, meta_description }, image)
+    },
+    [formData, updateCaseStudy],
+  )
 
   // Handle form data changes
-  const handleFormChange = (field, value) => {
+  const handleFormChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  }, [])
 
   // Handle file input change
-  const handleImageChange = (e) => {
+  const handleImageChange = useCallback((e) => {
     const file = e.target.files[0]
     setFormData((prev) => ({ ...prev, image: file }))
-  }
+  }, [])
 
   // Open edit dialog
-  const openEditDialog = () => {
+  const openEditDialog = useCallback(() => {
     if (!isOwner) {
       setError("You don't have permission to edit this case study.")
       return
@@ -265,12 +291,18 @@ export default function CaseStudyDetailPage() {
       image: null 
     })
     setIsEditDialogOpen(true)
-  }
+  }, [isOwner, caseStudy])
 
-  // Handle image error
-  const handleImageError = () => {
+  // Handle image error - IMPROVED VERSION (same as services)
+  const handleImageError = useCallback((e) => {
+    console.error("Image failed to load:", e.target.src)
     setImageError(true)
-  }
+  }, [])
+
+  // Navigate back using client-side navigation
+  const goBack = useCallback(() => {
+    router.back()
+  }, [router])
 
   // Function to count characters
   const countCharacters = (text) => {
@@ -291,7 +323,7 @@ export default function CaseStudyDetailPage() {
     if (token && caseStudyId) {
       fetchCaseStudy()
     }
-  }, [token, caseStudyId])
+  }, [token, caseStudyId, fetchCaseStudy])
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -321,7 +353,7 @@ export default function CaseStudyDetailPage() {
   if (!caseStudy) {
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -341,14 +373,17 @@ export default function CaseStudyDetailPage() {
   const shortDescriptionLength = countCharacters(caseStudy.short_description)
   const contentLength = countCharacters(caseStudy.content)
   const wordCount = countWords(caseStudy.content)
-  const imageUrl = getImageUrl(caseStudy.image)
+  
+  // Get the correct image field - check both possible field names (same as services)
+  const caseStudyImagePath = caseStudy.image_path || caseStudy.image || null
+  const imageUrl = getImageUrl(caseStudyImagePath)
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
@@ -400,35 +435,33 @@ export default function CaseStudyDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Case Study Image Section - Always Display */}
+              {/* Case Study Image Section - IMPROVED VERSION (same as services) */}
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold">Case Study Image</h3>
                 <div className="aspect-video relative overflow-hidden rounded-lg bg-muted border-2 border-dashed border-muted-foreground/25">
-                  {caseStudy.image || !imageError ? (
+                  {caseStudyImagePath && !imageError ? (
                     <img
-                      src={getImageUrl(caseStudy.image) || "/placeholder.svg"}
+                      src={imageUrl}
                       alt="Case study image"
                       className="object-cover w-full h-full"
                       onError={handleImageError}
+                      onLoad={() => setImageError(false)}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <ImageIcon className="h-16 w-16 mb-4" />
-                      <p className="text-lg font-medium">Image failed to load</p>
-                      <p className="text-sm text-center px-4">Path: {caseStudy.image}</p>
+                      <p className="text-lg font-medium">
+                        {caseStudyImagePath ? "Image failed to load" : "No case study image"}
+                      </p>
+                      {caseStudyImagePath && (
+                        <>
+                          <p className="text-sm text-center px-4 mt-2">Path: {caseStudyImagePath}</p>
+                          <p className="text-xs text-center px-4 mt-1 text-red-500">URL: {imageUrl}</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-                {caseStudy.image && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>
-                      <span className="font-medium">Image Path:</span> {caseStudy.image}
-                    </div>
-                    <div>
-                      <span className="font-medium">Full URL:</span> {getImageUrl(caseStudy.image)}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Heading Section */}
@@ -522,7 +555,7 @@ export default function CaseStudyDetailPage() {
               {/* Display all other fields from the API */}
               {Object.keys(caseStudy).map((key) => {
                 if (
-                  !["id", "user_id", "created_at", "updated_at", "heading", "short_description", "content", "meta_title", "meta_description", "image"].includes(key) &&
+                  !["id", "user_id", "created_at", "updated_at", "heading", "short_description", "content", "meta_title", "meta_description", "image", "image_path"].includes(key) &&
                   caseStudy[key] !== null &&
                   caseStudy[key] !== undefined &&
                   caseStudy[key] !== ""
@@ -560,14 +593,8 @@ export default function CaseStudyDetailPage() {
               </div>
               <div>
                 <span className="font-medium">Case Study Image:</span>{" "}
-                {caseStudy.image ? (imageError ? "Error loading" : "Available") : "Not set"}
+                {caseStudyImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
               </div>
-              {caseStudy.image && (
-                <div>
-                  <span className="font-medium">Image Status:</span>{" "}
-                  {imageError ? "Failed to load" : "Successfully loaded"}
-                </div>
-              )}
               <div>
                 <span className="font-medium">SEO Meta Title:</span> {caseStudy.meta_title ? "Set" : "Not set"}
               </div>
@@ -656,8 +683,8 @@ export default function CaseStudyDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image (optional)</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {caseStudy.image && (
-                  <p className="text-xs text-muted-foreground">Current image: {caseStudy.image}</p>
+                {caseStudyImagePath && (
+                  <p className="text-xs text-muted-foreground">Current image: {caseStudyImagePath}</p>
                 )}
               </div>
             </div>

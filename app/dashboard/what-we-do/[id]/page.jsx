@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -41,6 +41,7 @@ export default function InfoDetailPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [imageError, setImageError] = useState(false)
   const [formData, setFormData] = useState({
+    name: "",
     content: "",
     image: null,
   })
@@ -55,23 +56,39 @@ export default function InfoDetailPage() {
   // Check if current user is the owner
   const isOwner = info && user && info.user_id === user.id
 
-  // Function to get proper image URL
-  const getImageUrl = (image) => {
-    if (!image) return "/placeholder.svg?height=800&width=1600"
-    if (image.startsWith("http")) return image
-
-    // Handle static uploads path
-    if (image.startsWith("/static/")) {
-      return `http://ai.l4it.net:8000${image}`
+  // Function to get proper image URL - IMPROVED VERSION (same as services)
+  const getImageUrl = useCallback((image) => {
+    console.log("getImageUrl called with:", image)
+    
+    // Return placeholder immediately if no image
+    if (!image || image === undefined || image === null || image === '') {
+      return "/placeholder.svg?height=800&width=1600"
     }
-
-    // If it's just a filename or relative path, assume it's in static/uploads
-    const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `http://ai.l4it.net:8000${cleanPath}`
-  }
+    
+    if (typeof image === 'string' && (image.startsWith("http://") || image.startsWith("https://"))) {
+      return image
+    }
+    
+    // Handle the specific format from your API: "/static/uploads/info.jpeg"
+    if (typeof image === 'string' && image.startsWith("/static/")) {
+      return `${API_BASE_URL}${image}`
+    }
+    
+    // Handle format without leading slash: "static/uploads/info.jpeg"
+    if (typeof image === 'string' && image.startsWith("static/")) {
+      return `${API_BASE_URL}/${image}`
+    }
+    
+    if (typeof image === 'string') {
+      return `${API_BASE_URL}/static/uploads/${image}`
+    }
+    
+    // Fallback to placeholder
+    return "/placeholder.svg?height=800&width=1600"
+  }, [])
 
   // Fetch info details
-  const fetchInfo = async () => {
+  const fetchInfo = useCallback(async () => {
     if (!token) return
 
     try {
@@ -95,8 +112,10 @@ export default function InfoDetailPage() {
       }
 
       const data = await response.json()
+      console.log("Fetched info data:", data)
       setInfo(data)
       setFormData({
+        name: data.name || "",
         content: data.content || "",
         image: null,
       })
@@ -108,10 +127,10 @@ export default function InfoDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, infoId, logout, router])
 
   // Update info
-  const updateInfo = async (infoData) => {
+  const updateInfo = useCallback(async (infoData) => {
     if (!token || !isOwner) {
       setError("You don't have permission to edit this information.")
       return
@@ -157,16 +176,18 @@ export default function InfoDetailPage() {
       setInfo(updatedInfo)
       setSuccess("Information updated successfully!")
       setIsEditDialogOpen(false)
+      
+      // Reset the image error state when info is updated
       setImageError(false)
     } catch (err) {
       setError(`Failed to update information: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
-  }
+  }, [token, isOwner, infoId, logout, router])
 
   // Delete info
-  const deleteInfo = async () => {
+  const deleteInfo = useCallback(async () => {
     if (!token || !isOwner) {
       setError("You don't have permission to delete this information.")
       return
@@ -205,11 +226,16 @@ export default function InfoDetailPage() {
     } catch (err) {
       setError(`Failed to delete information: ${err.message}`)
     }
-  }
+  }, [token, isOwner, infoId, logout, router])
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = useCallback((e) => {
     e.preventDefault()
+
+    if (!formData.name.trim()) {
+      setError("Name is required")
+      return
+    }
 
     if (!formData.content.trim()) {
       setError("Content is required")
@@ -217,38 +243,64 @@ export default function InfoDetailPage() {
     }
 
     updateInfo(formData)
-  }
+  }, [formData, updateInfo])
 
   // Handle file input change
-  const handleImageChange = (e) => {
+  const handleImageChange = useCallback((e) => {
     const file = e.target.files[0]
     setFormData((prev) => ({ ...prev, image: file }))
-  }
+  }, [])
 
   // Handle input changes
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  }, [])
 
   // Open edit dialog
-  const openEditDialog = () => {
+  const openEditDialog = useCallback(() => {
     if (!isOwner) {
       setError("You don't have permission to edit this information.")
       return
     }
+    setFormData({ 
+      name: info.name || "", 
+      content: info.content || "", 
+      image: null 
+    })
     setIsEditDialogOpen(true)
+  }, [isOwner, info])
+
+  // Handle image error - IMPROVED VERSION (same as services)
+  const handleImageError = useCallback((e) => {
+    console.error("Image failed to load:", e.target.src)
+    setImageError(true)
+  }, [])
+
+  // Navigate back using client-side navigation
+  const goBack = useCallback(() => {
+    router.back()
+  }, [router])
+
+  // Function to count characters
+  const countCharacters = (text) => {
+    return text ? text.length : 0
   }
 
-  // Handle image error
-  const handleImageError = () => {
-    setImageError(true)
+  // Function to count words
+  const countWords = (text) => {
+    if (!text) return 0
+    return text
+      .replace(/<[^>]*>/g, "")
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
   }
 
   useEffect(() => {
     if (token && infoId) {
       fetchInfo()
     }
-  }, [token, infoId])
+  }, [token, infoId, fetchInfo])
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -278,7 +330,7 @@ export default function InfoDetailPage() {
   if (!info) {
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -296,17 +348,26 @@ export default function InfoDetailPage() {
     )
   }
 
+  const contentLength = countCharacters(info.content)
+  const wordCount = countWords(info.content)
+  
+  // Get the correct image field - check both possible field names (same as services)
+  const infoImagePath = info.image_path || info.image || null
+  const imageUrl = getImageUrl(infoImagePath)
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Section Details</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {info.name || `Section #${info.id}`}
+            </h1>
             <p className="text-muted-foreground">View and manage section information</p>
           </div>
         </div>
@@ -345,52 +406,63 @@ export default function InfoDetailPage() {
           <Card>
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">Section #{info.id}</CardTitle>
-                <div className="flex items-center space-x-2">{isOwner && <Badge variant="secondary">Owner</Badge>}</div>
+                <CardTitle className="text-xl">
+                  {info.name || `Section #${info.id}`}
+                </CardTitle>
+                <div className="flex items-center space-x-2">
+                  <Badge variant="default">Active</Badge>
+                  {isOwner && <Badge variant="secondary">Owner</Badge>}
+                </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Info Image Section - Always Display */}
+              {/* Section Name */}
+              {info.name && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold">Section Name</h3>
+                  <p className="text-lg font-medium">{info.name}</p>
+                </div>
+              )}
+
+              {/* Info Image Section - IMPROVED VERSION (same as services) */}
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold">Section Image</h3>
                 <div className="aspect-video relative overflow-hidden rounded-lg bg-muted border-2 border-dashed border-muted-foreground/25">
-                  {info.image_path || !imageError ? (
+                  {infoImagePath && !imageError ? (
                     <img
-                      src={getImageUrl(info.image_path) || "/placeholder.svg"}
-                      alt={"Section " + info.id}
+                      src={imageUrl}
+                      alt="Section image"
                       className="object-cover w-full h-full"
                       onError={handleImageError}
+                      onLoad={() => setImageError(false)}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <ImageIcon className="h-16 w-16 mb-4" />
-                      <p className="text-lg font-medium">No image available</p>
-                      <p className="text-sm text-center px-4">Upload an image to display here</p>
+                      <p className="text-lg font-medium">
+                        {infoImagePath ? "Image failed to load" : "No section image"}
+                      </p>
+                      {infoImagePath && (
+                        <>
+                          <p className="text-sm text-center px-4 mt-2">Path: {infoImagePath}</p>
+                          <p className="text-xs text-center px-4 mt-1 text-red-500">URL: {imageUrl}</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-                {info.image_path && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>
-                      <span className="font-medium">Image Path:</span> {info.image_path}
-                    </div>
-                    <div>
-                      <span className="font-medium">Full URL:</span> {getImageUrl(info.image_path)}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Content Section */}
-                        <div className="space-y-2">
-              <h3 className="text-lg font-semibold">Content</h3>
-              <div className="prose max-w-none overflow-hidden">
-                <div
-                  className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
-                  dangerouslySetInnerHTML={{ __html: info?.content || "No content available" }}
-                />
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Content</h3>
+                <div className="prose max-w-none overflow-hidden">
+                  <div
+                    className="leading-relaxed break-words overflow-wrap-anywhere hyphens-auto"
+                    dangerouslySetInnerHTML={{ __html: info?.content || "No content available" }}
+                  />
+                </div>
               </div>
-            </div>
             </CardContent>
           </Card>
         </div>
@@ -404,6 +476,11 @@ export default function InfoDetailPage() {
               <div>
                 <span className="font-medium">ID:</span> {info.id}
               </div>
+              {info.name && (
+                <div>
+                  <span className="font-medium">Name:</span> {info.name}
+                </div>
+              )}
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
@@ -431,7 +508,16 @@ export default function InfoDetailPage() {
               {/* Display all other fields from the API */}
               {Object.keys(info).map((key) => {
                 if (
-                  !["id", "user_id", "created_at", "updated_at", "content", "image_path"].includes(key) &&
+                  ![
+                    "id",
+                    "name",
+                    "user_id",
+                    "created_at",
+                    "updated_at",
+                    "content",
+                    "image_path",
+                    "image",
+                  ].includes(key) &&
                   info[key] !== null &&
                   info[key] !== undefined &&
                   info[key] !== ""
@@ -456,28 +542,15 @@ export default function InfoDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <span className="font-medium">Content Length:</span> {info.content?.length || 0} characters
+                <span className="font-medium">Content Length:</span> {contentLength} characters
               </div>
               <div>
-                <span className="font-medium">Word Count:</span>{" "}
-                {info.content
-                  ? info.content
-                      .trim()
-                      .split(/\s+/)
-                      .filter((word) => word.length > 0).length
-                  : 0}{" "}
-                words
+                <span className="font-medium">Word Count:</span> {wordCount} words
               </div>
               <div>
                 <span className="font-medium">Section Image:</span>{" "}
-                {info.image_path ? (imageError ? "Error loading" : "Available") : "Not set"}
+                {infoImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
               </div>
-              {info.image_path && (
-                <div>
-                  <span className="font-medium">Image Status:</span>{" "}
-                  {imageError ? "Failed to load" : "Successfully loaded"}
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -507,23 +580,34 @@ export default function InfoDetailPage() {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Edit Section</DialogTitle>
-            <DialogDescription>Update the section content and image.</DialogDescription>
+            <DialogDescription>Update the section name, content and image.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
+                <Label htmlFor="edit-name">Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => handleInputChange('name', e.target.value)}
+                  placeholder="Enter section name..."
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor
-          value={formData.content}
-          onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
-          placeholder="Enter section content..."
-        />
+                  value={formData.content}
+                  onChange={(value) => setFormData((prev) => ({ ...prev, content: value }))}
+                  placeholder="Enter section content..."
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image (optional)</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {info.image_path && <p className="text-xs text-muted-foreground">Current image: {info.image_path}</p>}
+                {infoImagePath && <p className="text-xs text-muted-foreground">Current image: {infoImagePath}</p>}
               </div>
             </div>
             <DialogFooter>

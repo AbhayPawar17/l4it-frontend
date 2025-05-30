@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -31,6 +32,7 @@ export default function WhatWeDoPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingSection, setEditingSection] = useState(null)
   const [formData, setFormData] = useState({
+    name: "",
     content: "",
     image: null,
   })
@@ -80,7 +82,7 @@ export default function WhatWeDoPage() {
       }
 
       const data = await response.json()
-      setSections(data)
+      setSections(data.reverse())
       setError(null)
     } catch (err) {
       setError(`Failed to fetch sections: ${err.message}`)
@@ -128,7 +130,7 @@ export default function WhatWeDoPage() {
       }
 
       const newSection = await response.json()
-      setSections((prev) => [...prev, newSection])
+      setSections((prev) => [newSection, ...prev])
       setSuccess("Section created successfully!")
       setIsCreateDialogOpen(false)
       resetForm()
@@ -234,6 +236,11 @@ export default function WhatWeDoPage() {
   const handleCreateSubmit = (e) => {
     e.preventDefault()
 
+    if (!formData.name.trim()) {
+      setError("Name is required")
+      return
+    }
+
     if (!formData.content.trim()) {
       setError("Content is required")
       return
@@ -245,6 +252,11 @@ export default function WhatWeDoPage() {
   // Handle edit form submission
   const handleEditSubmit = (e) => {
     e.preventDefault()
+
+    if (!formData.name.trim()) {
+      setError("Name is required")
+      return
+    }
 
     if (!formData.content.trim()) {
       setError("Content is required")
@@ -262,14 +274,10 @@ export default function WhatWeDoPage() {
     setFormData((prev) => ({ ...prev, image: file }))
   }
 
-  // Handle input changes
-  const handleInputChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
-
   // Reset form
   const resetForm = () => {
     setFormData({
+      name: "",
       content: "",
       image: null,
     })
@@ -279,12 +287,26 @@ export default function WhatWeDoPage() {
 
   // Open edit dialog
   const openEditDialog = (section) => {
+    if (section.user_id !== user?.id) {
+      setError("You don't have permission to edit this section.")
+      return
+    }
     setEditingSection(section)
     setFormData({
+      name: section.name || "",
       content: section.content || "",
       image: null,
     })
     setIsEditDialogOpen(true)
+  }
+
+  // Handle delete click
+  const handleDeleteClick = (section) => {
+    if (section.user_id !== user?.id) {
+      setError("You don't have permission to delete this section.")
+      return
+    }
+    deleteSection(section.id)
   }
 
   // Navigate to section detail
@@ -328,6 +350,7 @@ export default function WhatWeDoPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">What We Do</h1>
@@ -340,22 +363,31 @@ export default function WhatWeDoPage() {
               Add Section
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Create New Section</DialogTitle>
               <DialogDescription>Add a new section to your company information.</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit}>
-              <div className="grid gap-4 py-4">
+              <div className="grid gap-4 py-3">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Name *</Label>
+                  <Input
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                    placeholder="Enter section name..."
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
-                 <FroalaTextEditor
-  value={formData.content}
-  onChange={(content) => setFormData(prev => ({...prev, content}))}
-  placeholder="Enter section content..."
-/>
+                  <FroalaTextEditor
+                    value={formData.content}
+                    onChange={(content) => setFormData(prev => ({...prev, content}))}
+                    placeholder="Enter section content..."
+                  />
                 </div>
-
                 <div className="space-y-2">
                   <Label htmlFor="image">Image (optional)</Label>
                   <Input id="image" type="file" accept="image/*" onChange={handleImageChange} />
@@ -396,85 +428,75 @@ export default function WhatWeDoPage() {
         </Alert>
       )}
 
-      {/* Sections */}
-      <div className="grid gap-6">
-        {sections.length === 0 ? (
-          <Card>
-            <CardContent className="flex flex-col items-center justify-center py-12">
-              <div className="text-center space-y-2">
-                <h3 className="text-lg font-semibold">No sections found</h3>
-                <p className="text-muted-foreground">Get started by creating your first section.</p>
-                <Button onClick={() => setIsCreateDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Section
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          sections.map((section) => {
-            return (
-              <Card
-                key={section.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => viewSectionDetail(section.id)}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div>
-                        <CardTitle className="text-xl">Section #{section.id}</CardTitle>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          viewSectionDetail(section.id)
-                        }}
-                      >
-                        <Eye className="mr-2 h-3 w-3" />
-                        View Details
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm" onClick={(e) => e.stopPropagation()}>
-                            <MoreVertical className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              openEditDialog(section)
-                            }}
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              deleteSection(section.id)
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+      {/* Sections Grid */}
+      {sections.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">No sections found</h3>
+              <p className="text-muted-foreground">Get started by creating your first section.</p>
+              <Button onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Section
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {sections.map((section) => (
+            <Card key={section.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">
+                    {section.name || `Section #${section.id}`}
+                  </CardTitle>
+                  <div className="flex items-center space-x-2">
+                    <Badge variant="default">Active</Badge>
+                    {isOwner(section) && <Badge variant="secondary">Owner</Badge>}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => viewSectionDetail(section.id)}>
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </DropdownMenuItem>
+                        {isOwner(section) && (
+                          <>
+                            <DropdownMenuItem onClick={() => openEditDialog(section)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeleteClick(section)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+                {section.name && (
+                  <p className="text-sm text-muted-foreground font-medium">
+                    {section.name}
+                  </p>
+                )}
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
                   {section.image_path && (
-                    <div className="aspect-video relative overflow-hidden rounded-lg bg-muted">
+                    <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
                       <img
                         src={getImageUrl(section.image_path) || "/placeholder.svg"}
-                        alt={"Section " + section.id}
+                        alt="Section image"
                         className="object-cover w-full h-full"
                         onError={(e) => {
                           e.target.style.display = "none"
@@ -482,57 +504,76 @@ export default function WhatWeDoPage() {
                       />
                     </div>
                   )}
-                  <p className="text-muted-foreground leading-relaxed line-clamp-3">{section.content}</p>
-                </CardContent>
-                <CardFooter className="text-xs text-muted-foreground flex justify-between items-center">
-                  {section.updated_at && <div>Last updated: {new Date(section.updated_at).toLocaleDateString()}</div>}
-                </CardFooter>
-              </Card>
-            )
-          })
-        )}
-      </div>
+                  <div>
+                    <div
+                      dangerouslySetInnerHTML={{
+                        __html:
+                          section.content?.substring(0, 150) + (section.content?.length > 150 ? "..." : "") ||
+                          "No content available",
+                      }}
+                      className="text-sm text-muted-foreground line-clamp-3"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <Button variant="outline" size="sm" onClick={() => viewSectionDetail(section.id)}>
+                      <Eye className="mr-2 h-3 w-3" />
+                      View Details
+                    </Button>
+                    {isOwner(section) && (
+                      <div className="flex items-center space-x-1">
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(section)}>
+                          <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteClick(section)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Section</DialogTitle>
             <DialogDescription>Update section information.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-4 py-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData(prev => ({...prev, name: e.target.value}))}
+                  placeholder="Enter section name..."
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor
-                  id="edit-content"
-                  placeholder="Enter section content..."
                   value={formData.content}
-                  onChange={(e) => handleInputChange("content", e.target.value)}
-                  rows={4}
+                  onChange={(content) => setFormData(prev => ({...prev, content}))}
+                  placeholder="Enter section content..."
                 />
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image (optional)</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
                 {editingSection?.image_path && (
-                  <div className="mt-2">
-                    <p className="text-xs text-muted-foreground mb-2">Current image:</p>
-                    <div className="aspect-video w-full max-w-sm relative overflow-hidden rounded-lg bg-muted">
-                      <img
-                        src={getImageUrl(editingSection.image_path) || "/placeholder.svg"}
-                        alt={"Section " + editingSection.id}
-                        className="object-cover w-full h-full"
-                        onError={(e) => {
-                          e.target.parentNode.innerHTML = `<div class="flex flex-col items-center justify-center h-full text-muted-foreground">
-                            <span class="text-sm">Image failed to load</span>
-                            <span class="text-xs">${editingSection.image_path}</span>
-                          </div>`
-                        }}
-                      />
-                    </div>
-                  </div>
+                  <p className="text-xs text-muted-foreground">Current image: {editingSection.image_path}</p>
                 )}
               </div>
             </div>
@@ -551,10 +592,9 @@ export default function WhatWeDoPage() {
                 )}
               </Button>
             </DialogFooter>
-          </form>
+            </form>
         </DialogContent>
       </Dialog>
-
     </div>
   )
 }

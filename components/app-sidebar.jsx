@@ -40,13 +40,13 @@ const menuItems = [
     icon: Users,
   },
   {
-    title: "Contact Us",
-    url: "/dashboard/contact-us",
+    title: "Case-Study",
+    url: "/dashboard/case-studies",
     icon: Mail,
   },
   {
-    title: "Case-Study",
-    url: "/dashboard/case-studies",
+    title: "Contact Us",
+    url: "/dashboard/contact-us",
     icon: Mail,
   },
 ]

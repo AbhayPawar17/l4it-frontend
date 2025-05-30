@@ -59,7 +59,7 @@ export default function BlogDetailPage() {
   // Check if current user is the owner
   const isOwner = blog && user && blog.user_id === user.id
 
-  // Function to get proper image URL - FIXED VERSION
+  // Function to get proper image URL - IMPROVED VERSION
   const getImageUrl = useCallback((image) => {
     console.log("getImageUrl called with:", image)
     
@@ -68,7 +68,6 @@ export default function BlogDetailPage() {
       return "/placeholder.svg?height=800&width=1600"
     }
     
-    // If it's already a full URL, return as-is
     if (typeof image === 'string' && (image.startsWith("http://") || image.startsWith("https://"))) {
       return image
     }
@@ -83,7 +82,6 @@ export default function BlogDetailPage() {
       return `${API_BASE_URL}/${image}`
     }
     
-    // If it's just a filename, assume it's in static/uploads/
     if (typeof image === 'string') {
       return `${API_BASE_URL}/static/uploads/${image}`
     }
@@ -137,9 +135,9 @@ export default function BlogDetailPage() {
     }
   }, [token, blogId, logout, router])
 
-  // Update blog
+  // Update blog - IMPROVED VERSION with better error handling
   const updateBlog = useCallback(
-    async (blogData) => {
+    async (blogData, image) => {
       if (!token || !isOwner) {
         setError("You don't have permission to edit this blog post.")
         return
@@ -148,14 +146,18 @@ export default function BlogDetailPage() {
       try {
         setSubmitting(true)
         const formDataToSend = new FormData()
-
-        Object.keys(blogData).forEach((key) => {
-          if (key === "image" && blogData[key]) {
-            formDataToSend.append(key, blogData[key])
-          } else if (key !== "image") {
-            formDataToSend.append(key, blogData[key])
-          }
-        })
+        
+        // Append all blog data fields
+        formDataToSend.append("heading", blogData.heading)
+        formDataToSend.append("short_description", blogData.short_description)
+        formDataToSend.append("content", blogData.content)
+        formDataToSend.append("meta_title", blogData.meta_title)
+        formDataToSend.append("meta_description", blogData.meta_description)
+        
+        // Append image if provided
+        if (image) {
+          formDataToSend.append("image", image)
+        }
 
         const response = await fetch(`${API_BASE_URL}/blog/${blogId}`, {
           method: "PATCH",
@@ -178,7 +180,8 @@ export default function BlogDetailPage() {
             setError("You don't have permission to edit this blog post.")
             return
           }
-          throw new Error(`HTTP error! status: ${response.status}`)
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
         }
 
         const updatedBlog = await response.json()
@@ -198,7 +201,7 @@ export default function BlogDetailPage() {
     [token, isOwner, blogId, logout, router],
   )
 
-  // Delete blog
+  // Delete blog - IMPROVED VERSION with better error handling
   const deleteBlog = useCallback(async () => {
     if (!token || !isOwner) {
       setError("You don't have permission to delete this blog post.")
@@ -228,7 +231,8 @@ export default function BlogDetailPage() {
           setError("You don't have permission to delete this blog post.")
           return
         }
-        throw new Error(`HTTP error! status: ${response.status}`)
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`)
       }
 
       setSuccess("Blog deleted successfully!")
@@ -240,30 +244,36 @@ export default function BlogDetailPage() {
     }
   }, [token, isOwner, blogId, logout, router])
 
-  // Handle form submission
+  // Handle form submission - IMPROVED VERSION
   const handleSubmit = useCallback(
     (e) => {
       e.preventDefault()
+      const { heading, short_description, content, meta_title, meta_description, image } = formData
 
-      if (!formData.heading.trim()) {
+      if (!heading.trim()) {
         setError("Heading is required")
         return
       }
 
-      if (!formData.short_description.trim()) {
+      if (!short_description.trim()) {
         setError("Short description is required")
         return
       }
 
-      if (!formData.content.trim()) {
+      if (!content.trim()) {
         setError("Content is required")
         return
       }
 
-      updateBlog(formData)
+      updateBlog({ heading, short_description, content, meta_title, meta_description }, image)
     },
     [formData, updateBlog],
   )
+
+  // Handle form data changes - IMPROVED VERSION
+  const handleFormChange = useCallback((field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+  }, [])
 
   // Handle file input change
   const handleImageChange = useCallback((e) => {
@@ -271,19 +281,23 @@ export default function BlogDetailPage() {
     setFormData((prev) => ({ ...prev, image: file }))
   }, [])
 
-  // Handle input changes
-  const handleInputChange = useCallback((field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }, [])
-
-  // Open edit dialog
+  // Open edit dialog - IMPROVED VERSION
   const openEditDialog = useCallback(() => {
     if (!isOwner) {
       setError("You don't have permission to edit this blog post.")
       return
     }
+    // Reset form data with current blog data when opening dialog
+    setFormData({
+      image: null,
+      heading: blog.heading || "",
+      short_description: blog.short_description || "",
+      content: blog.content || "",
+      meta_title: blog.meta_title || "",
+      meta_description: blog.meta_description || "",
+    })
     setIsEditDialogOpen(true)
-  }, [isOwner])
+  }, [isOwner, blog])
 
   // Handle image error - IMPROVED VERSION
   const handleImageError = useCallback((e) => {
@@ -295,6 +309,21 @@ export default function BlogDetailPage() {
   const goBack = useCallback(() => {
     router.back()
   }, [router])
+
+  // Function to count characters
+  const countCharacters = (text) => {
+    return text ? text.length : 0
+  }
+
+  // Function to count words
+  const countWords = (text) => {
+    if (!text) return 0
+    return text
+      .replace(/<[^>]*>/g, "")
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length
+  }
 
   useEffect(() => {
     if (token && blogId) {
@@ -359,21 +388,6 @@ export default function BlogDetailPage() {
       .filter((word) => word.length > 0).length
     const readingTimeMinutes = wordCount / wordsPerMinute
     return Math.ceil(readingTimeMinutes)
-  }
-
-  // Function to count characters
-  const countCharacters = (text) => {
-    return text ? text.length : 0
-  }
-
-  // Function to count words
-  const countWords = (text) => {
-    if (!text) return 0
-    return text
-      .replace(/<[^>]*>/g, "")
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length
   }
 
   const readingTime = estimateReadingTime(blog.content)
@@ -666,28 +680,22 @@ export default function BlogDetailPage() {
         </div>
       </div>
 
-      {/* Edit Dialog */}
+      {/* Edit Dialog - IMPROVED VERSION */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Blog Post</DialogTitle>
             <DialogDescription>Update your blog post content and metadata.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="edit-image">Featured Image</Label>
-                <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {blogImagePath && <p className="text-xs text-muted-foreground">Current image: {blogImagePath}</p>}
-              </div>
-
+            <div className="grid gap-4 py-3">
               <div className="space-y-2">
                 <Label htmlFor="edit-heading">Heading *</Label>
                 <Input
                   id="edit-heading"
                   placeholder="Enter blog heading..."
                   value={formData.heading}
-                  onChange={(e) => handleInputChange("heading", e.target.value)}
+                  onChange={(e) => handleFormChange("heading", e.target.value)}
                 />
               </div>
 
@@ -697,7 +705,7 @@ export default function BlogDetailPage() {
                   id="edit-short_description"
                   placeholder="Enter a brief description..."
                   value={formData.short_description}
-                  onChange={(e) => handleInputChange("short_description", e.target.value)}
+                  onChange={(e) => handleFormChange("short_description", e.target.value)}
                   rows={3}
                 />
               </div>
@@ -706,32 +714,36 @@ export default function BlogDetailPage() {
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor
                   value={formData.content}
-                  onChange={(value) => handleInputChange("content", value)}
+                  onChange={(value) => handleFormChange("content", value)}
                   placeholder="Write your blog content here..."
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="edit-meta_title">Meta Title</Label>
-                  <Input
-                    id="edit-meta_title"
-                    placeholder="SEO meta title..."
-                    value={formData.meta_title}
-                    onChange={(e) => handleInputChange("meta_title", e.target.value)}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-meta_title">Meta Title</Label>
+                <Input
+                  id="edit-meta_title"
+                  placeholder="SEO meta title..."
+                  value={formData.meta_title}
+                  onChange={(e) => handleFormChange("meta_title", e.target.value)}
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="edit-meta_description">Meta Description</Label>
-                  <Textarea
-                    id="edit-meta_description"
-                    placeholder="SEO meta description..."
-                    value={formData.meta_description}
-                    onChange={(e) => handleInputChange("meta_description", e.target.value)}
-                    rows={2}
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-meta_description">Meta Description</Label>
+                <Textarea
+                  id="edit-meta_description"
+                  placeholder="SEO meta description..."
+                  value={formData.meta_description}
+                  onChange={(e) => handleFormChange("meta_description", e.target.value)}
+                  rows={2}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="edit-image">Featured Image (optional)</Label>
+                <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
+                {blogImagePath && <p className="text-xs text-muted-foreground">Current image: {blogImagePath}</p>}
               </div>
             </div>
             <DialogFooter>

@@ -21,7 +21,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Loader2, AlertCircle, CheckCircle, Eye, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
-import { RichTextEditor } from "../../../components/rich-text-editor"
 
 const API_BASE_URL = "http://ai.l4it.net:8000"
 
@@ -32,7 +31,7 @@ export default function ServicesPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [editingService, setEditingService] = useState(null)
-  const [formData, setFormData] = useState({ content: "", image: null })
+  const [formData, setFormData] = useState({ name: "", content: "", image: null })
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(null)
 
@@ -91,12 +90,13 @@ export default function ServicesPage() {
   }
 
   // Create new service
-  const createService = async (content, image) => {
+  const createService = async (name, content, image) => {
     if (!token) return
 
     try {
       setSubmitting(true)
       const formData = new FormData()
+      formData.append("name", name)
       formData.append("content", content)
       if (image) {
         formData.append("image", image)
@@ -127,7 +127,7 @@ export default function ServicesPage() {
       setServices((prev) => [...prev, newService])
       setSuccess("Service created successfully!")
       setIsCreateDialogOpen(false)
-      setFormData({ content: "", image: null })
+      setFormData({ name: "", content: "", image: null })
     } catch (err) {
       setError(`Failed to create service: ${err.message}`)
     } finally {
@@ -136,12 +136,13 @@ export default function ServicesPage() {
   }
 
   // Update service
-  const updateService = async (serviceId, content, image) => {
+  const updateService = async (serviceId, name, content, image) => {
     if (!token) return
 
     try {
       setSubmitting(true)
       const formData = new FormData()
+      formData.append("name", name)
       formData.append("content", content)
       if (image) {
         formData.append("image", image)
@@ -177,7 +178,7 @@ export default function ServicesPage() {
       setSuccess("Service updated successfully!")
       setIsEditDialogOpen(false)
       setEditingService(null)
-      setFormData({ content: "", image: null })
+      setFormData({ name: "", content: "", image: null })
     } catch (err) {
       setError(`Failed to update service: ${err.message}`)
     } finally {
@@ -225,20 +226,30 @@ export default function ServicesPage() {
   // Handle create form submission
   const handleCreateSubmit = (e) => {
     e.preventDefault()
-    const { content, image } = formData
+    const { name, content, image } = formData
+
+    if (!name.trim()) {
+      setError("Service name is required")
+      return
+    }
 
     if (!content.trim()) {
       setError("Content is required")
       return
     }
 
-    createService(content, image)
+    createService(name, content, image)
   }
 
   // Handle edit form submission
   const handleEditSubmit = (e) => {
     e.preventDefault()
-    const { content, image } = formData
+    const { name, content, image } = formData
+
+    if (!name.trim()) {
+      setError("Service name is required")
+      return
+    }
 
     if (!content.trim()) {
       setError("Content is required")
@@ -247,7 +258,7 @@ export default function ServicesPage() {
 
     if (!editingService) return
 
-    updateService(editingService.id, content, image)
+    updateService(editingService.id, name, content, image)
   }
 
   // Handle file input change
@@ -258,7 +269,7 @@ export default function ServicesPage() {
 
   // Reset form and close dialogs
   const resetForm = () => {
-    setFormData({ content: "", image: null })
+    setFormData({ name: "", content: "", image: null })
     setError(null)
     setSuccess(null)
   }
@@ -270,7 +281,7 @@ export default function ServicesPage() {
       return
     }
     setEditingService(service)
-    setFormData({ content: service.content || "", image: null })
+    setFormData({ name: service.name || "", content: service.content || "", image: null })
     setIsEditDialogOpen(true)
   }
 
@@ -341,11 +352,22 @@ export default function ServicesPage() {
             <DialogHeader>
               <DialogTitle>Create New Service</DialogTitle>
               <DialogDescription>
-                Add a new service to your offerings. Fill in the content and optionally upload an image.
+                Add a new service to your offerings. Fill in the name, content and optionally upload an image.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreateSubmit}>
               <div className="grid gap-4 py-3">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Service Name *</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="Enter service name..."
+                    value={formData.name}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                    required
+                  />
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="content">Content *</Label>
                   <FroalaTextEditor
@@ -414,7 +436,7 @@ export default function ServicesPage() {
             <Card key={service.id} className="hover:shadow-lg transition-shadow">
               <CardHeader>
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Service #{service.id}</CardTitle>
+                  <CardTitle className="text-lg">{service.name || `Service #${service.id}`}</CardTitle>
                   <div className="flex items-center space-x-2">
                     <Badge variant="default">Active</Badge>
                     {isOwner(service) && <Badge variant="secondary">Owner</Badge>}
@@ -506,10 +528,21 @@ export default function ServicesPage() {
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit Service</DialogTitle>
-            <DialogDescription>Update the service content and image.</DialogDescription>
+            <DialogDescription>Update the service name, content and image.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditSubmit}>
             <div className="grid gap-4 py-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Service Name *</Label>
+                <Input
+                  id="edit-name"
+                  type="text"
+                  placeholder="Enter service name..."
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor 

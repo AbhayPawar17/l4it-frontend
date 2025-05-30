@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -39,7 +39,7 @@ export default function ServiceDetailPage() {
   const [error, setError] = useState(null)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [imageError, setImageError] = useState(false)
-  const [formData, setFormData] = useState({ content: "", image: null })
+  const [formData, setFormData] = useState({ name: "", content: "", image: null })
   const [submitting, setSubmitting] = useState(false)
   const [success, setSuccess] = useState(null)
 
@@ -51,23 +51,39 @@ export default function ServiceDetailPage() {
   // Check if current user is the owner
   const isOwner = service && user && service.user_id === user.id
 
-  // Function to get proper image URL
-  const getImageUrl = (image) => {
-    if (!image) return "/placeholder.svg?height=800&width=1600"
-    if (image.startsWith("http")) return image
-
-    // Handle static uploads path
-    if (image.startsWith("/static/")) {
-      return `http://ai.l4it.net:8000${image}`
+  // Function to get proper image URL - IMPROVED VERSION (same as blog)
+  const getImageUrl = useCallback((image) => {
+    console.log("getImageUrl called with:", image)
+    
+    // Return placeholder immediately if no image
+    if (!image || image === undefined || image === null || image === '') {
+      return "/placeholder.svg?height=800&width=1600"
     }
-
-    // If it's just a filename or relative path, assume it's in static/uploads
-    const cleanPath = image.startsWith("/") ? image : `/static/uploads/${image}`
-    return `http://ai.l4it.net:8000${cleanPath}`
-  }
+    
+    if (typeof image === 'string' && (image.startsWith("http://") || image.startsWith("https://"))) {
+      return image
+    }
+    
+    // Handle the specific format from your API: "/static/uploads/service3.jpeg"
+    if (typeof image === 'string' && image.startsWith("/static/")) {
+      return `${API_BASE_URL}${image}`
+    }
+    
+    // Handle format without leading slash: "static/uploads/service3.jpeg"
+    if (typeof image === 'string' && image.startsWith("static/")) {
+      return `${API_BASE_URL}/${image}`
+    }
+    
+    if (typeof image === 'string') {
+      return `${API_BASE_URL}/static/uploads/${image}`
+    }
+    
+    // Fallback to placeholder
+    return "/placeholder.svg?height=800&width=1600"
+  }, [])
 
   // Fetch service details
-  const fetchService = async () => {
+  const fetchService = useCallback(async () => {
     if (!token) return
 
     try {
@@ -91,8 +107,9 @@ export default function ServiceDetailPage() {
       }
 
       const data = await response.json()
+      console.log("Fetched service data:", data)
       setService(data)
-      setFormData({ content: data.content || "", image: null })
+      setFormData({ name: data.name || "", content: data.content || "", image: null })
       setError(null)
       setImageError(false)
     } catch (err) {
@@ -101,61 +118,68 @@ export default function ServiceDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [token, serviceId, logout, router])
 
   // Update service
-  const updateService = async (content, image) => {
-    if (!token || !isOwner) {
-      setError("You don't have permission to edit this service.")
-      return
-    }
-
-    try {
-      setSubmitting(true)
-      const formData = new FormData()
-      formData.append("content", content)
-      if (image) {
-        formData.append("image", image)
+  const updateService = useCallback(
+    async (name, content, image) => {
+      if (!token || !isOwner) {
+        setError("You don't have permission to edit this service.")
+        return
       }
 
-      const response = await fetch(`${API_BASE_URL}/msp-services/${serviceId}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      })
+      try {
+        setSubmitting(true)
+        const formDataToSend = new FormData()
+        formDataToSend.append("name", name)
+        formDataToSend.append("content", content)
+        if (image) {
+          formDataToSend.append("image", image)
+        }
 
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError("Session expired. Please login again.")
-          logout()
-          setTimeout(() => {
-            router.push("/")
-          }, 2000)
-          return
+        const response = await fetch(`${API_BASE_URL}/msp-services/${serviceId}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+          body: formDataToSend,
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            setError("Session expired. Please login again.")
+            logout()
+            setTimeout(() => {
+              router.push("/")
+            }, 2000)
+            return
+          }
+          if (response.status === 403) {
+            setError("You don't have permission to edit this service.")
+            return
+          }
+          throw new Error(`HTTP error! status: ${response.status}`)
         }
-        if (response.status === 403) {
-          setError("You don't have permission to edit this service.")
-          return
-        }
-        throw new Error(`HTTP error! status: ${response.status}`)
+
+        const updatedService = await response.json()
+        setService(updatedService)
+        setSuccess("Service updated successfully!")
+        setIsEditDialogOpen(false)
+        setImageError(false)
+        
+        // Reset the image error state when service is updated
+        setImageError(false)
+      } catch (err) {
+        setError(`Failed to update service: ${err.message}`)
+      } finally {
+        setSubmitting(false)
       }
-
-      const updatedService = await response.json()
-      setService(updatedService)
-      setSuccess("Service updated successfully!")
-      setIsEditDialogOpen(false)
-      setImageError(false)
-    } catch (err) {
-      setError(`Failed to update service: ${err.message}`)
-    } finally {
-      setSubmitting(false)
-    }
-  }
+    },
+    [token, isOwner, serviceId, logout, router],
+  )
 
   // Delete service
-  const deleteService = async () => {
+  const deleteService = useCallback(async () => {
     if (!token || !isOwner) {
       setError("You don't have permission to delete this service.")
       return
@@ -194,41 +218,55 @@ export default function ServiceDetailPage() {
     } catch (err) {
       setError(`Failed to delete service: ${err.message}`)
     }
-  }
+  }, [token, isOwner, serviceId, logout, router])
 
   // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const { content, image } = formData
+  const handleSubmit = useCallback(
+    (e) => {
+      e.preventDefault()
+      const { name, content, image } = formData
 
-    if (!content.trim()) {
-      setError("Content is required")
-      return
-    }
+      if (!name.trim()) {
+        setError("Service name is required")
+        return
+      }
 
-    updateService(content, image)
-  }
+      if (!content.trim()) {
+        setError("Content is required")
+        return
+      }
+
+      updateService(name, content, image)
+    },
+    [formData, updateService],
+  )
 
   // Handle file input change
-  const handleImageChange = (e) => {
+  const handleImageChange = useCallback((e) => {
     const file = e.target.files[0]
     setFormData((prev) => ({ ...prev, image: file }))
-  }
+  }, [])
 
   // Open edit dialog
-  const openEditDialog = () => {
+  const openEditDialog = useCallback(() => {
     if (!isOwner) {
       setError("You don't have permission to edit this service.")
       return
     }
-    setFormData({ content: service.content || "", image: null })
+    setFormData({ name: service.name || "", content: service.content || "", image: null })
     setIsEditDialogOpen(true)
-  }
+  }, [isOwner, service])
 
-  // Handle image error
-  const handleImageError = () => {
+  // Handle image error - IMPROVED VERSION (same as blog)
+  const handleImageError = useCallback((e) => {
+    console.error("Image failed to load:", e.target.src)
     setImageError(true)
-  }
+  }, [])
+
+  // Navigate back using client-side navigation
+  const goBack = useCallback(() => {
+    router.back()
+  }, [router])
 
   // Function to count characters
   const countCharacters = (text) => {
@@ -249,7 +287,7 @@ export default function ServiceDetailPage() {
     if (token && serviceId) {
       fetchService()
     }
-  }, [token, serviceId])
+  }, [token, serviceId, fetchService])
 
   // Clear success message after 3 seconds
   useEffect(() => {
@@ -279,7 +317,7 @@ export default function ServiceDetailPage() {
   if (!service) {
     return (
       <div className="space-y-6">
-        <Button variant="outline" onClick={() => router.back()}>
+        <Button variant="outline" onClick={goBack}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
@@ -287,7 +325,9 @@ export default function ServiceDetailPage() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center space-y-2">
               <h3 className="text-lg font-semibold">Service not found</h3>
-              <p className="text-muted-foreground">The service you're looking for doesn't exist or has been deleted.</p>
+              <p className="text-muted-foreground">
+                The service you're looking for doesn't exist or has been deleted.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -297,19 +337,24 @@ export default function ServiceDetailPage() {
 
   const contentLength = countCharacters(service.content)
   const wordCount = countWords(service.content)
-  const imageUrl = getImageUrl(service.image_path)
+  
+  // Get the correct image field - check both possible field names (same as blog)
+  const serviceImagePath = service.image_path || service.image || null
+  const imageUrl = getImageUrl(serviceImagePath)
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
+          <Button variant="outline" onClick={goBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Service #{service.id}</h1>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {service.name || `Service #${service.id}`}
+            </h1>
             <p className="text-muted-foreground">View and manage service details</p>
           </div>
         </div>
@@ -356,35 +401,41 @@ export default function ServiceDetailPage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Service Image Section - Always Display */}
+              {/* Service Name Section */}
+              <div className="space-y-2">
+                <h3 className="text-lg font-semibold">Service Name</h3>
+                <p className="text-base font-medium text-foreground bg-muted p-3 rounded-md">
+                  {service.name || "No name provided"}
+                </p>
+              </div>
+
+              {/* Service Image Section - IMPROVED VERSION (same as blog) */}
               <div className="space-y-2">
                 <h3 className="text-lg font-semibold">Service Image</h3>
                 <div className="aspect-video relative overflow-hidden rounded-lg bg-muted border-2 border-dashed border-muted-foreground/25">
-                  {service.image_path || !imageError ? (
+                  {serviceImagePath && !imageError ? (
                     <img
-                      src={getImageUrl(service.image_path) || "/placeholder.svg"}
+                      src={imageUrl}
                       alt="Service image"
                       className="object-cover w-full h-full"
                       onError={handleImageError}
+                      onLoad={() => setImageError(false)}
                     />
                   ) : (
                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
                       <ImageIcon className="h-16 w-16 mb-4" />
-                      <p className="text-lg font-medium">Image failed to load</p>
-                      <p className="text-sm text-center px-4">Path: {service.image_path}</p>
+                      <p className="text-lg font-medium">
+                        {serviceImagePath ? "Image failed to load" : "No service image"}
+                      </p>
+                      {serviceImagePath && (
+                        <>
+                          <p className="text-sm text-center px-4 mt-2">Path: {serviceImagePath}</p>
+                          <p className="text-xs text-center px-4 mt-1 text-red-500">URL: {imageUrl}</p>
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
-                {service.image_path && (
-                  <div className="text-xs text-muted-foreground space-y-1">
-                    <div>
-                      <span className="font-medium">Image Path:</span> {service.image_path}
-                    </div>
-                    <div>
-                      <span className="font-medium">Full URL:</span> {getImageUrl(service.image_path)}
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Content Section */}
@@ -409,6 +460,9 @@ export default function ServiceDetailPage() {
             <CardContent className="space-y-4">
               <div>
                 <span className="font-medium">Service ID:</span> {service.id}
+              </div>
+              <div>
+                <span className="font-medium">Service Name:</span> {service.name || "Not provided"}
               </div>
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-muted-foreground" />
@@ -437,7 +491,16 @@ export default function ServiceDetailPage() {
               {/* Display all other fields from the API */}
               {Object.keys(service).map((key) => {
                 if (
-                  !["id", "user_id", "created_at", "updated_at", "content", "image_path"].includes(key) &&
+                  ![
+                    "id",
+                    "name",
+                    "user_id",
+                    "created_at",
+                    "updated_at",
+                    "content",
+                    "image_path",
+                    "image",
+                  ].includes(key) &&
                   service[key] !== null &&
                   service[key] !== undefined &&
                   service[key] !== ""
@@ -462,6 +525,9 @@ export default function ServiceDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <span className="font-medium">Service Name:</span> {service.name ? "Provided" : "Not set"}
+              </div>
+              <div>
                 <span className="font-medium">Content Length:</span> {contentLength} characters
               </div>
               <div>
@@ -469,14 +535,8 @@ export default function ServiceDetailPage() {
               </div>
               <div>
                 <span className="font-medium">Service Image:</span>{" "}
-                {service.image_path ? (imageError ? "Error loading" : "Available") : "Not set"}
+                {serviceImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
               </div>
-              {service.image_path && (
-                <div>
-                  <span className="font-medium">Image Status:</span>{" "}
-                  {imageError ? "Failed to load" : "Successfully loaded"}
-                </div>
-              )}
             </CardContent>
           </Card>
 
@@ -506,10 +566,21 @@ export default function ServiceDetailPage() {
         <DialogContent className="sm:max-w-[525px]">
           <DialogHeader>
             <DialogTitle>Edit Service</DialogTitle>
-            <DialogDescription>Update the service content and image.</DialogDescription>
+            <DialogDescription>Update the service name, content and image.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Service Name *</Label>
+                <Input
+                  id="edit-name"
+                  type="text"
+                  placeholder="Enter service name..."
+                  value={formData.name}
+                  onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-content">Content *</Label>
                 <FroalaTextEditor
@@ -521,9 +592,7 @@ export default function ServiceDetailPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-image">Image (optional)</Label>
                 <Input id="edit-image" type="file" accept="image/*" onChange={handleImageChange} />
-                {service.image_path && (
-                  <p className="text-xs text-muted-foreground">Current image: {service.image_path}</p>
-                )}
+                {serviceImagePath && <p className="text-xs text-muted-foreground">Current image: {serviceImagePath}</p>}
               </div>
             </div>
             <DialogFooter>

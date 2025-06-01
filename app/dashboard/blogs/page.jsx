@@ -23,7 +23,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Loader2, AlertCircle, CheckCircle, Eye, Calendar, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 const getImageUrl = (image) => {
   if (!image) return "/placeholder.svg?height=800&width=1600"
@@ -323,7 +323,7 @@ export default function BlogsPage() {
   // Open edit dialog
   const openEditDialog = useCallback(
     (blog) => {
-      if (blog.user_id !== user?.id) {
+      if (blog?.author_email !== user?.email) {
         setError("You don't have permission to edit this blog post.")
         return
       }
@@ -338,19 +338,19 @@ export default function BlogsPage() {
       })
       setIsEditDialogOpen(true)
     },
-    [user?.id],
+    [user?.email],
   )
 
-  // Handle delete click
+  // Handle delete click - FIXED: Pass blog.id instead of blog.author_email
   const handleDeleteClick = useCallback(
     (blog) => {
-      if (blog.user_id !== user?.id) {
+      if (blog.author_email !== user?.email) {
         setError("You don't have permission to delete this blog post.")
         return
       }
-      deleteBlog(blog.id)
+      deleteBlog(blog.id) // Fixed: Pass blog.id instead of blog.author_email
     },
-    [user?.id, deleteBlog],
+    [user?.email, deleteBlog],
   )
 
   // Navigate to blog detail using client-side navigation
@@ -361,8 +361,8 @@ export default function BlogsPage() {
     [router],
   )
 
-  // Check if user owns the blog - memoized
-  const isOwner = useCallback((blog) => blog.user_id === user?.id, [user?.id])
+  // Check if user owns the blog - FIXED: Use author_email comparison
+  const isOwner = useCallback((blog) => blog.author_email === user?.email, [user?.email])
 
   // Memoized blog cards to prevent unnecessary re-renders
   const blogCards = useMemo(() => {
@@ -371,46 +371,14 @@ export default function BlogsPage() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg line-clamp-2">{blog.heading}</CardTitle>
-            <div className="flex items-center space-x-2">
-              <Badge variant="default">Published</Badge>
-              {isOwner(blog) && <Badge variant="secondary">Owner</Badge>}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => viewBlogDetail(blog.id)}>
-                    <Eye className="mr-2 h-4 w-4" />
-                    Read More
-                  </DropdownMenuItem>
-                  {isOwner(blog) && (
-                    <>
-                      <DropdownMenuItem onClick={() => openEditDialog(blog)}>
-                        <Edit className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDeleteClick(blog)}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
-          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {blog.image_path && (
+            {blog.image && (
               <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
                 <img
-                  src={getImageUrl(blog.image_path) || "/placeholder.svg"}
+                  src={getImageUrl(blog.image) || "/placeholder.svg"}
                   alt={blog.heading}
                   className="object-cover w-full h-full"
                   onError={(e) => {

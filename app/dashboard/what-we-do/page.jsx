@@ -22,7 +22,7 @@ import { Plus, Edit, Trash2, Loader2, AlertCircle, CheckCircle, MoreVertical, Ey
 import { useAuth } from "../../../contexts/auth-context"
 import { FroalaTextEditor } from "@/components/rich-text-editor"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 export default function WhatWeDoPage() {
   const [sections, setSections] = useState([])
@@ -287,7 +287,7 @@ export default function WhatWeDoPage() {
 
   // Open edit dialog
   const openEditDialog = (section) => {
-    if (section.user_id !== user?.id) {
+    if (section.author_email !== user?.email) {
       setError("You don't have permission to edit this section.")
       return
     }
@@ -302,7 +302,7 @@ export default function WhatWeDoPage() {
 
   // Handle delete click
   const handleDeleteClick = (section) => {
-    if (section.user_id !== user?.id) {
+    if (section.author_email !== user?.email) {
       setError("You don't have permission to delete this section.")
       return
     }
@@ -315,7 +315,7 @@ export default function WhatWeDoPage() {
   }
 
   // Check if user owns the section
-  const isOwner = (section) => section.user_id === user?.id
+  const isOwner = (section) => section.author_email === user?.email
 
   useEffect(() => {
     if (token) {
@@ -451,38 +451,6 @@ export default function WhatWeDoPage() {
                   <CardTitle className="text-lg">
                     {section.name || `Section #${section.id}`}
                   </CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="default">Active</Badge>
-                    {isOwner(section) && <Badge variant="secondary">Owner</Badge>}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => viewSectionDetail(section.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {isOwner(section) && (
-                          <>
-                            <DropdownMenuItem onClick={() => openEditDialog(section)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(section)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
                 </div>
                 {section.name && (
                   <p className="text-sm text-muted-foreground font-medium">
@@ -492,10 +460,10 @@ export default function WhatWeDoPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {section.image_path && (
+                  {section.image && (
                     <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
                       <img
-                        src={getImageUrl(section.image_path) || "/placeholder.svg"}
+                        src={getImageUrl(section.image) || "/placeholder.svg"}
                         alt="Section image"
                         className="object-cover w-full h-full"
                         onError={(e) => {

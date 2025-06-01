@@ -32,7 +32,7 @@ import {
 import { useAuth } from "../../../../contexts/auth-context"
 import { FroalaTextEditor } from "../../../../components/rich-text-editor"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 export default function CaseStudyDetailPage() {
   const [caseStudy, setCaseStudy] = useState(null)

@@ -22,7 +22,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Plus, Loader2, AlertCircle, CheckCircle, Eye, Edit, Trash2, MoreVertical } from "lucide-react"
 import { useAuth } from "../../../contexts/auth-context"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 export default function ServicesPage() {
   const [services, setServices] = useState([])
@@ -276,7 +276,7 @@ export default function ServicesPage() {
 
   // Open edit dialog
   const openEditDialog = (service) => {
-    if (service.user_id !== user?.id) {
+    if (service.author_email !== user?.email) {
       setError("You don't have permission to edit this service.")
       return
     }
@@ -287,7 +287,7 @@ export default function ServicesPage() {
 
   // Handle delete click
   const handleDeleteClick = (service) => {
-    if (service.user_id !== user?.id) {
+    if (service.author_email !== user?.email) {
       setError("You don't have permission to delete this service.")
       return
     }
@@ -300,7 +300,7 @@ export default function ServicesPage() {
   }
 
   // Check if user owns the service
-  const isOwner = (service) => service.user_id === user?.id
+  const isOwner = (service) => service.author_email === user?.email
 
   useEffect(() => {
     if (token) {
@@ -437,46 +437,14 @@ export default function ServicesPage() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg">{service.name || `Service #${service.id}`}</CardTitle>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant="default">Active</Badge>
-                    {isOwner(service) && <Badge variant="secondary">Owner</Badge>}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => viewServiceDetail(service.id)}>
-                          <Eye className="mr-2 h-4 w-4" />
-                          View Details
-                        </DropdownMenuItem>
-                        {isOwner(service) && (
-                          <>
-                            <DropdownMenuItem onClick={() => openEditDialog(service)}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDeleteClick(service)}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {service.image_path && (
+                  {service.image && (
                     <div className="aspect-video relative overflow-hidden rounded-md bg-muted">
                       <img
-                        src={getImageUrl(service.image_path) || "/placeholder.svg"}
+                        src={getImageUrl(service.image) || "/placeholder.svg"}
                         alt="Service image"
                         className="object-cover w-full h-full"
                         onError={(e) => {

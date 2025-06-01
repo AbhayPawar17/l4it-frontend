@@ -32,7 +32,7 @@ import {
 import { useAuth } from "../../../../contexts/auth-context"
 import { FroalaTextEditor } from "@/components/rich-text-editor"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 export default function InfoDetailPage() {
   const [info, setInfo] = useState(null)
@@ -52,9 +52,10 @@ export default function InfoDetailPage() {
   const router = useRouter()
   const params = useParams()
   const infoId = params.id
-
+  console.log("geeting infoId:", info)
+  console.log("Current user:", user)
   // Check if current user is the owner
-  const isOwner = info && user && info.user_id === user.id
+  const isOwner = info && user && info.author_email === user.email
 
   // Function to get proper image URL - IMPROVED VERSION (same as services)
   const getImageUrl = useCallback((image) => {
@@ -410,7 +411,6 @@ export default function InfoDetailPage() {
                   {info.name || `Section #${info.id}`}
                 </CardTitle>
                 <div className="flex items-center space-x-2">
-                  <Badge variant="default">Active</Badge>
                   {isOwner && <Badge variant="secondary">Owner</Badge>}
                 </div>
               </div>
@@ -470,21 +470,13 @@ export default function InfoDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Information Details</CardTitle>
+              <CardTitle className="text-lg">Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <span className="font-medium">ID:</span> {info.id}
-              </div>
-              {info.name && (
-                <div>
-                  <span className="font-medium">Name:</span> {info.name}
-                </div>
-              )}
               <div className="flex items-center space-x-2">
                 <User className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">
-                  <span className="font-medium">Owner ID:</span> {info.user_id}
+                  <span className="font-medium">Author Name:</span> {info.author_email?.split('@')[0]}
                   {isOwner && <span className="ml-2 text-green-600">(You)</span>}
                 </span>
               </div>
@@ -492,7 +484,7 @@ export default function InfoDetailPage() {
                 <div>
                   <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
                   <span className="text-sm">
-                    <span className="font-medium">Created:</span> {new Date(info.created_at).toLocaleString()}
+                    <span className="font-medium">Created Date:</span> {new Date(info?.created_at).toLocaleDateString() || "N/A"}
                   </span>
                 </div>
               )}
@@ -500,78 +492,12 @@ export default function InfoDetailPage() {
                 <div>
                   <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
                   <span className="text-sm">
-                    <span className="font-medium">Updated:</span> {new Date(info.updated_at).toLocaleString()}
+                    <span className="font-medium">Updated Date:</span> {new Date(info?.created_at).toLocaleDateString() || "N/A"}
                   </span>
                 </div>
               )}
-
-              {/* Display all other fields from the API */}
-              {Object.keys(info).map((key) => {
-                if (
-                  ![
-                    "id",
-                    "name",
-                    "user_id",
-                    "created_at",
-                    "updated_at",
-                    "content",
-                    "image_path",
-                    "image",
-                  ].includes(key) &&
-                  info[key] !== null &&
-                  info[key] !== undefined &&
-                  info[key] !== ""
-                ) {
-                  return (
-                    <div key={key}>
-                      <span className="font-medium">
-                        {key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}:
-                      </span>{" "}
-                      {String(info[key])}
-                    </div>
-                  )
-                }
-                return null
-              })}
             </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Content Statistics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="font-medium">Content Length:</span> {contentLength} characters
-              </div>
-              <div>
-                <span className="font-medium">Word Count:</span> {wordCount} words
-              </div>
-              <div>
-                <span className="font-medium">Section Image:</span>{" "}
-                {infoImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Access Level</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center">
-                  <Shield className="h-5 w-5 mr-2 text-muted-foreground" />
-                  <Badge variant={isOwner ? "default" : "outline"}>{isOwner ? "Full Access" : "Read Only"}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {isOwner
-                    ? "You have full access to edit and delete this information as you are the owner."
-                    : "You can view this information but cannot edit or delete it as you are not the owner."}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+            </Card>
         </div>
       </div>
 

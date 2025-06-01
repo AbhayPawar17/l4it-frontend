@@ -32,7 +32,7 @@ import {
 import { useAuth } from "../../../../contexts/auth-context"
 import { FroalaTextEditor } from "../../../../components/rich-text-editor"
 
-const API_BASE_URL = "http://ai.l4it.net:8000"
+const API_BASE_URL = "http://localhost:8000"
 
 export default function BlogDetailPage() {
   const [blog, setBlog] = useState(null)
@@ -57,7 +57,7 @@ export default function BlogDetailPage() {
   const blogId = params.id
 
   // Check if current user is the owner
-  const isOwner = blog && user && blog.user_id === user.id
+  const isOwner = blog && user && blog.author_email === user.email
 
   // Function to get proper image URL - IMPROVED VERSION
   const getImageUrl = useCallback((image) => {
@@ -513,174 +513,44 @@ export default function BlogDetailPage() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Blog Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="font-medium">Blog ID:</span> {blog.id}
-              </div>
-              <div className="flex items-center space-x-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  <span className="font-medium">Author ID:</span> {blog.user_id}
-                  {isOwner && <span className="ml-2 text-green-600">(You)</span>}
-                </span>
-              </div>
-              {blog.created_at && (
-                <div>
-                  <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
-                  <span className="text-sm">
-                    <span className="font-medium">Created:</span> {new Date(blog.created_at).toLocaleString()}
-                  </span>
-                </div>
-              )}
-              {blog.updated_at && (
-                <div>
-                  <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
-                  <span className="text-sm">
-                    <span className="font-medium">Updated:</span> {new Date(blog.updated_at).toLocaleString()}
-                  </span>
-                </div>
-              )}
-
-              {/* Display all other fields from the API */}
-              {Object.keys(blog).map((key) => {
-                if (
-                  ![
-                    "id",
-                    "user_id",
-                    "created_at",
-                    "updated_at",
-                    "heading",
-                    "short_description",
-                    "content",
-                    "meta_title",
-                    "meta_description",
-                    "image_path",
-                    "image",
-                  ].includes(key) &&
-                  blog[key] !== null &&
-                  blog[key] !== undefined &&
-                  blog[key] !== ""
-                ) {
-                  return (
-                    <div key={key}>
-                      <span className="font-medium">
-                        {key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}:
-                      </span>{" "}
-                      {String(blog[key])}
-                    </div>
-                  )
-                }
-                return null
-              })}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Content Statistics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <span className="font-medium">Content Length:</span> {contentLength} characters
-              </div>
-              <div>
-                <span className="font-medium">Word Count:</span> {wordCount} words
-              </div>
-              <div>
-                <span className="font-medium">Reading Time:</span> {readingTime} minutes
-              </div>
-              <div>
-                <span className="font-medium">Featured Image:</span>{" "}
-                {blogImagePath ? (imageError ? "Error loading" : "Available") : "Not set"}
-              </div>
-              <div>
-                <span className="font-medium">Heading Length:</span> {countCharacters(blog.heading)} characters
-              </div>
-              <div>
-                <span className="font-medium">Description Length:</span> {countCharacters(blog.short_description)}{" "}
-                characters
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
               <CardTitle className="text-lg">SEO Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <span className="font-medium">Meta Title:</span> {blog.meta_title || "N/A"} ({metaTitleLength}{" "}
-                characters)
+                <span className="font-medium">Meta Title:</span> {blog.meta_title || "N/A"}
               </div>
               <div>
-                <span className="font-medium">Meta Description:</span> {blog.meta_description || "N/A"} (
-                {metaDescriptionLength} characters)
-              </div>
-              <div>
-                {metaTitleLength === 0 ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>Meta title is missing. Add one for better SEO.</AlertDescription>
-                  </Alert>
-                ) : metaTitleLength < 50 || metaTitleLength > 60 ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>Meta title should be between 50-60 characters for optimal SEO.</AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>Meta title length is optimal for SEO.</AlertDescription>
-                  </Alert>
-                )}
-              </div>
-              <div>
-                {metaDescriptionLength === 0 ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>Meta description is missing. Add one for better SEO.</AlertDescription>
-                  </Alert>
-                ) : metaDescriptionLength < 150 || metaDescriptionLength > 160 ? (
-                  <Alert variant="destructive">
-                    <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>
-                      Meta description should be between 150-160 characters for optimal SEO.
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert>
-                    <CheckCircle className="h-4 w-4" />
-                    <AlertDescription>Meta description length is optimal for SEO.</AlertDescription>
-                  </Alert>
-                )}
-              </div>
+                <span className="font-medium">Meta Description:</span> {blog.meta_description || "N/A"}               </div>
+                   
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Access Level</CardTitle>
+              <CardTitle className="text-lg">Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-center space-y-2">
-                <div className="flex items-center justify-center">
-                  <Shield className="h-5 w-5 mr-2 text-muted-foreground" />
-                  <Badge variant={isOwner ? "default" : "outline"}>{isOwner ? "Full Access" : "Read Only"}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {isOwner
-                    ? "You have full access to edit and delete this blog post as you are the author."
-                    : "You can view this blog post but cannot edit or delete it as you are not the author."}
-                </p>
+            <CardContent className="space-y-4">
+               <div className="flex items-center space-x-2">
+                <User className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm">
+                  <span className="font-medium">Author Name:</span> {blog?.author_email?.split('@')[0]}
+                  {isOwner && <span className="ml-2 text-green-600">(You)</span>}
+                </span>
               </div>
+              <div>
+                <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
+                <span className="font-medium">Created On:</span> {new Date(blog?.created_at).toLocaleDateString() || "N/A"}
+              </div>
+              <div>
+                <Calendar className="h-4 w-4 text-muted-foreground inline-block mr-2" />
+                <span className="font-medium">Updated On:</span> {new Date(blog?.updated_at).toLocaleDateString() || "N/A"}               </div>
+                   
             </CardContent>
           </Card>
+
         </div>
       </div>
 
-      {/* Edit Dialog - IMPROVED VERSION */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
